@@ -7,11 +7,11 @@ often each routine appears in its inferred subset, so the run-to-run variance
 of the topology can be measured rather than assumed.
 
 Usage:
-    python phase1_repeat.py <log.csv> <n_runs> "Name1:execs,Name2:execs,..."
+    python src/phase1_repeat.py <log.csv> <n_runs> "Name1:execs,Name2:execs,..."
 
-Example (hard case 3.2, 5 routines x2, 5 repeats):
+Example (case study, 4 routines x2 executions, 5 repeats):
     python src/phase1_repeat.py data/case_study/caso_studio_trasferte_2exec.csv 5 \
-      "Process Refund:2,Approve Invoice:2,Reconcile Account:2,Close Ticket:2,Onboard Employee:2"
+      "Travel Authorization:2,Expense Reimbursement:2,Purchase Order Approval:2,Student Grant Disbursement:2"
 """
 from __future__ import annotations
 
