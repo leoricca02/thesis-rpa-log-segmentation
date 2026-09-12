@@ -206,7 +206,7 @@ thesis_project/
 │   ├── data_pipeline.py              # Ingestion, Phase 0A / 0B / 0A-2, serialisation
 │   ├── phase1_boundary_reasoning.py  # Phase 1 — globally shared boundaries
 │   ├── phase2_execution_mapping.py   # Phase 2 — routing, validation, XLSX + JSON export
-│   ├── smart_llm_client.py           #  REST client: cache, telemetry, retry/back-off
+│   ├── smart_llm_client.py           # Gemini REST client: cache, telemetry, retry/back-off
 │   └── analyze_telemetry.py          # Token/cost observability report
 │
 ├── tests/                            # 40 pytest cases — fully offline
@@ -222,7 +222,7 @@ thesis_project/
 ├── results/                          # Reference artefacts from a real run (committed)
 │   ├── Final_Segmented_Master_Log.xlsx
 │   ├── Final_Segmented_Master_Log_routing.json
-│   ├── _cache.json             # Cached LLM responses — enables a zero-cost replay
+│   ├── gemini_cache.json             # Cached LLM responses — enables a zero-cost replay
 │   ├── token_telemetry.csv
 │   └── token_telemetry_old.csv
 │
@@ -302,7 +302,7 @@ cp .env.example .env      # Windows: copy .env.example .env
 Then open `.env` and paste your key from [Google AI Studio](https://aistudio.google.com/apikey):
 
 ```ini
-_API_KEY=your_key_here
+GEMINI_API_KEY=your_key_here
 GEMINI_MODEL=gemini-3.5-flash
 ```
 
@@ -469,7 +469,9 @@ Estimated Cost:         $0.08115 USD (@ $0.3/M in, $2.5/M out)
 
 The full experimental campaign recorded in `results/token_telemetry.csv` cost **under
 ten cents** — cache hits are not billed and are not logged, so the figure reflects live
-calls only. Prices are CLI-configurable for other models.
+calls only. That campaign ran on `gemini-2.5-flash`, and the default prices above are
+that model's list prices; pass `--input-price`/`--output-price` when reporting a run
+made with another model.
 
 ---
 
@@ -496,8 +498,10 @@ operator knows Phase 2 is operating at risk before reading its output.
   need a streaming writer.
 - Phases 0A-2, 1 and 2 each send the whole serialised log in one prompt, so the practical
   input size is bounded by the model's context window.
-- Results depend on the model version. `gemini-3.5-flash` is the default; the committed
-  cache pins the exact responses behind the reported results.
+- Results depend on the model version. The pipeline defaults to `gemini-3.5-flash`,
+  while the reference artefacts under `results/` were produced with `gemini-2.5-flash`;
+  the committed cache pins the exact responses behind them. See
+  [Reproducibility](#12-reproducibility) for how to replay that run.
 
 ---
 
@@ -506,10 +510,20 @@ operator knows Phase 2 is operating at risk before reading its output.
 The `results/` directory is a snapshot of a real run, committed on purpose.
 
 **Replaying the reference run without spending anything:** the pipeline looks for its
-cache in the current working directory. Copy the committed cache there first —
+cache in the current working directory, and the model name is part of every cache key.
+The committed responses were produced with `gemini-2.5-flash`, so the replay has to pin
+that model rather than the current default. Copy the cache across and set the model for
+the run —
 
 ```bash
 cp results/gemini_cache.json .
+GEMINI_MODEL=gemini-2.5-flash python src/main.py data/03_stress/stress2_case3_4.csv
+```
+
+```powershell
+# PowerShell
+Copy-Item results\gemini_cache.json .
+$env:GEMINI_MODEL = "gemini-2.5-flash"
 python src/main.py data/03_stress/stress2_case3_4.csv
 ```
 

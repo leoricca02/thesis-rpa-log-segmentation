@@ -21,9 +21,9 @@ from smart_llm_client import SmartLLMClient
 
 load_dotenv()
 
-# Model is env-driven so swapping (e.g. to gemini-2.5-flash-lite for a high-RPD
+# Model is env-driven so swapping (e.g. to gemini-3.5-flash-lite for a high-RPD
 # stress run) needs no code change.
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
 # Default sample log, resolved against the repository root (this file lives in
 # src/) so it works regardless of the directory the script is launched from.
 _DEFAULT_LOG_RELPATH = "data/04_noise/test_noise_case.csv"

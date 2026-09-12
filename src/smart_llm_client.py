@@ -234,7 +234,7 @@ class SmartLLMClient:
         result.
 
         Args:
-            model: Gemini model identifier (e.g. 'gemini-2.5-flash').
+            model: Gemini model identifier (e.g. 'gemini-3.5-flash').
             system_prompt: System instruction text.
             user_prompt: User message text.
             schema: Gemini ``responseSchema`` constraining the output shape.

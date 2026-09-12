@@ -12,7 +12,9 @@ import os
 import pandas as pd
 
 # Default per-1M-token prices (USD). Override via CLI for other models.
-# gemini-2.5-flash list price as of mid-2026.
+# These are gemini-2.5-flash list prices as of mid-2026, which match the
+# telemetry committed under results/. Pass --input-price/--output-price when
+# reporting on a run made with a different model.
 _DEFAULT_INPUT_PRICE = 0.30
 _DEFAULT_OUTPUT_PRICE = 2.50
 
