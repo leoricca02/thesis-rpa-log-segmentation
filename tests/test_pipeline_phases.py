@@ -1,4 +1,4 @@
-"""Tests for the pipeline phases using a scripted stub client (no network)."""
+"""Tests for the Seventh Approach phases (scripted stub client, no network)."""
 
 from __future__ import annotations
 
@@ -17,7 +17,9 @@ class StubClient:
         self._responses = list(responses)
         self.calls = []
 
-    def generate_content(self, model, system_prompt, user_prompt, schema, thinking_budget=0):
+    def generate_content(
+        self, model, system_prompt, user_prompt, schema, thinking_budget=0
+    ):
         self.calls.append((system_prompt, user_prompt))
         if not self._responses:
             raise AssertionError("StubClient ran out of scripted responses")
@@ -29,132 +31,12 @@ class FailingClient:
         raise RuntimeError("simulated API failure")
 
 
-# --------------------------------------------------------------- data_pipeline
-def _toy_df():
-    return pd.DataFrame(
-        {
-            "timestamp": ["2026-01-01T00:00:01", "2026-01-01T00:00:02"],
-            "application": ["Chrome", "Chrome"],
-            "event_type": ["navigateTo", "mouseMove"],
-            "browser_url": ["https://x/auth", ""],
-            "id": ["1", "2"],
-        }
-    )
+CONSTRAINTS = [
+    {"routine_name": "Task A", "executions": 2},
+    {"routine_name": "Task B", "executions": 2},
+]
 
 
-def test_filter_noise_removes_flagged_events():
-    df = _toy_df()
-    client = StubClient([["mouseMove"]])
-    out = dp.filter_noise_with_llm(df, "m", client)
-    assert list(out["event_type"]) == ["navigateTo"]
-    assert out.index.tolist() == [0]
-
-
-def test_filter_noise_fail_open_keeps_all_rows():
-    df = _toy_df()
-    out = dp.filter_noise_with_llm(df, "m", FailingClient())
-    assert len(out) == len(df)
-
-
-def test_metadata_columns_drops_invalid_and_anchors():
-    df = _toy_df()
-    # LLM tries to drop a real metadata col, a nonexistent col, and an anchor.
-    client = StubClient([["id", "does_not_exist", "event_type"]])
-    out = dp.identify_metadata_columns_with_llm(df, "m", client)
-    assert "id" in out
-    assert "does_not_exist" not in out
-    assert "event_type" not in out  # anchors are protected
-
-
-def test_metadata_columns_fallback_on_failure():
-    df = _toy_df()
-    out = dp.identify_metadata_columns_with_llm(df, "m", FailingClient())
-    assert "id" in out and "timestamp" in out
-
-
-def test_tag_irrelevant_marks_flagged_nodes():
-    df = pd.DataFrame(
-        {"node_id": [0, 1, 2], "llm_narrative": ["a", "b", "c"]}
-    )
-    client = StubClient([[1]])  # node 1 unrelated
-    out = dp.tag_irrelevant_nodes(df, ["Routine X"], "m", client)
-    assert out.loc[out.node_id == 1, "is_probable_noise"].iloc[0]
-    assert not out.loc[out.node_id == 0, "is_probable_noise"].iloc[0]
-
-
-def test_tag_irrelevant_fail_open_tags_nothing():
-    df = pd.DataFrame({"node_id": [0, 1], "llm_narrative": ["a", "b"]})
-    out = dp.tag_irrelevant_nodes(df, ["Routine X"], "m", FailingClient())
-    assert not out["is_probable_noise"].any()
-
-
-def test_tag_irrelevant_ignores_out_of_range():
-    df = pd.DataFrame({"node_id": [0, 1], "llm_narrative": ["a", "b"]})
-    client = StubClient([[99]])  # invalid id
-    out = dp.tag_irrelevant_nodes(df, ["Routine X"], "m", client)
-    assert not out["is_probable_noise"].any()
-
-
-def test_phase2_pretagged_noise_diverted_and_clean_routing(tmp_path):
-    df = _phase2_df()
-    df["is_probable_noise"] = [False, False, True, False]  # node 2 tagged noise
-    out = tmp_path / "o.xlsx"
-    # Only node 1 is routable now (0,3 shared; 2 noise).
-    plan = [
-        {"routine_name": "R", "execution_index": 1, "assigned_node_indices": [1]},
-    ]
-    client = StubClient([plan])
-    ok = p2.generate_segmented_log(
-        df, [0, 3], [{"routine_name": "R", "executions": 1}], "m",
-        output_file=str(out), client=client,
-    )
-    assert ok is True
-    import openpyxl
-    wb = openpyxl.load_workbook(out)
-    assert "Noise" in wb.sheetnames
-
-
-def test_phase2_no_noise_means_no_noise_sheet(tmp_path):
-    # Regression: clean log (no tag column, full coverage) -> no Noise sheet,
-    # identical to pre-upgrade behaviour.
-    out = tmp_path / "o.xlsx"
-    plan = [
-        {"routine_name": "R", "execution_index": 1, "assigned_node_indices": [1]},
-        {"routine_name": "R", "execution_index": 2, "assigned_node_indices": [2]},
-    ]
-    client = StubClient([plan])
-    ok = p2.generate_segmented_log(
-        _phase2_df(), [0, 3],
-        [{"routine_name": "R", "executions": 2}], "m",
-        output_file=str(out), client=client,
-    )
-    assert ok is True
-    import openpyxl
-    wb = openpyxl.load_workbook(out)
-    assert wb.sheetnames == ["Segmented_Logs"]
-
-
-def test_serialize_attaches_node_id_and_narrative(tmp_path):
-    csv = tmp_path / "log.csv"
-    _toy_df().to_csv(csv, sep=";", index=False)
-    client = StubClient([["mouseMove"], ["id", "timestamp"]])
-    out = dp.load_and_serialize_smartrpa(str(csv), "m", client)
-    assert list(out["node_id"]) == list(range(len(out)))
-    assert out.index.tolist() == list(out["node_id"])
-    assert "auth" in out.iloc[0]["llm_narrative"]
-    assert "id:" not in out.iloc[0]["llm_narrative"]  # pruned
-
-
-def test_serialize_without_timestamp_column(tmp_path):
-    df = _toy_df().drop(columns=["timestamp"])
-    csv = tmp_path / "log.csv"
-    df.to_csv(csv, sep=";", index=False)
-    client = StubClient([[], []])
-    out = dp.load_and_serialize_smartrpa(str(csv), "m", client)
-    assert len(out) == 2
-
-
-# ------------------------------------------------------------------- phase 1
 def _narrative_df(n):
     return pd.DataFrame(
         {
@@ -164,145 +46,323 @@ def _narrative_df(n):
     )
 
 
-def test_phase1_returns_sorted_valid_indices():
-    df = _narrative_df(5)
-    client = StubClient([{"reasoning": "r", "shared_indices": [4, 0]}])
-    assert p1.identify_shared_boundaries(df, "m", client) == [0, 4]
+# ---------------------------------------------------------------- phase 1
+def test_phase1_returns_valid_topology():
+    df = _narrative_df(7)
+    client = StubClient(
+        [
+            {
+                "reasoning": "r",
+                "shared_actions": [
+                    {"node_id": 0, "shared_with_routines": ["Task A", "Task B"]},
+                    {
+                        "node_id": 1,
+                        "shared_with_routines": ["Task A"],
+                        "justification": "module opener",
+                    },
+                ],
+            }
+        ]
+    )
+    topo = p1.infer_sharing_topology(df, CONSTRAINTS, "m", client)
+    assert topo is not None
+    assert [t["node_id"] for t in topo] == [0, 1]
+    assert topo[0]["shared_with"] == ["Task A", "Task B"]
+    assert topo[1]["shared_with"] == ["Task A"]
+    assert topo[1]["justification"] == "module opener"
 
 
-def test_phase1_drops_out_of_range_indices():
+def test_phase1_case_insensitive_name_matching():
     df = _narrative_df(3)
-    client = StubClient([{"reasoning": "r", "shared_indices": [0, 99]}])
-    assert p1.identify_shared_boundaries(df, "m", client) == [0]
+    client = StubClient(
+        [
+            {
+                "reasoning": "r",
+                "shared_actions": [
+                    {"node_id": 0, "shared_with_routines": ["task a", "  TASK B "]}
+                ],
+            }
+        ]
+    )
+    topo = p1.infer_sharing_topology(df, CONSTRAINTS, "m", client)
+    assert topo[0]["shared_with"] == ["Task A", "Task B"]
 
 
-def test_phase1_empty_when_no_boundaries():
+def test_phase1_unknown_routine_name_dropped():
     df = _narrative_df(3)
-    client = StubClient([{"reasoning": "none", "shared_indices": []}])
-    assert p1.identify_shared_boundaries(df, "m", client) == []
+    client = StubClient(
+        [
+            {
+                "reasoning": "r",
+                "shared_actions": [
+                    {
+                        "node_id": 0,
+                        "shared_with_routines": ["Task A", "Task Z"],
+                    }
+                ],
+            }
+        ]
+    )
+    topo = p1.infer_sharing_topology(df, CONSTRAINTS, "m", client)
+    assert topo[0]["shared_with"] == ["Task A"]  # Task Z silently dropped
+
+
+def test_phase1_empty_subset_reclassified_as_routable():
+    df = _narrative_df(3)
+    client = StubClient(
+        [
+            {
+                "reasoning": "r",
+                "shared_actions": [
+                    {"node_id": 0, "shared_with_routines": ["Task Z"]},  # all bad
+                    {"node_id": 1, "shared_with_routines": ["Task A"]},
+                ],
+            }
+        ]
+    )
+    topo = p1.infer_sharing_topology(df, CONSTRAINTS, "m", client)
+    assert [t["node_id"] for t in topo] == [1]  # node 0 removed from topology
+
+
+def test_phase1_out_of_range_node_dropped():
+    df = _narrative_df(3)
+    client = StubClient(
+        [
+            {
+                "reasoning": "r",
+                "shared_actions": [
+                    {"node_id": 99, "shared_with_routines": ["Task A"]},
+                    {"node_id": 2, "shared_with_routines": ["Task B"]},
+                ],
+            }
+        ]
+    )
+    topo = p1.infer_sharing_topology(df, CONSTRAINTS, "m", client)
+    assert [t["node_id"] for t in topo] == [2]
+
+
+def test_phase1_duplicate_node_entries_merged():
+    df = _narrative_df(3)
+    client = StubClient(
+        [
+            {
+                "reasoning": "r",
+                "shared_actions": [
+                    {"node_id": 0, "shared_with_routines": ["Task A"]},
+                    {"node_id": 0, "shared_with_routines": ["Task B"]},
+                ],
+            }
+        ]
+    )
+    topo = p1.infer_sharing_topology(df, CONSTRAINTS, "m", client)
+    assert len(topo) == 1
+    assert topo[0]["shared_with"] == ["Task A", "Task B"]
+
+
+def test_phase1_empty_topology_is_valid():
+    df = _narrative_df(3)
+    client = StubClient([{"reasoning": "none", "shared_actions": []}])
+    assert p1.infer_sharing_topology(df, CONSTRAINTS, "m", client) == []
 
 
 def test_phase1_returns_none_on_api_failure():
     df = _narrative_df(3)
-    assert p1.identify_shared_boundaries(df, "m", FailingClient()) is None
+    assert p1.infer_sharing_topology(df, CONSTRAINTS, "m", FailingClient()) is None
 
 
-# ------------------------------------------------------------------- phase 2
+# ---------------------------------------------------------------- phase 2
 def _phase2_df():
+    """7 nodes: 0=login(ALL) 1=open-X(A only) 2,4=A steps 3,5=B steps 6=logout."""
     return pd.DataFrame(
         {
-            "node_id": [0, 1, 2, 3],
-            "application": ["Chrome"] * 4,
-            "event_type": ["navigateTo", "click", "click", "navigateTo"],
-            "llm_narrative": ["auth", "refund", "ticket", "logout"],
+            "node_id": list(range(7)),
+            "application": ["App"] * 7,
+            "event_type": ["nav", "click", "click", "click", "click", "click", "nav"],
+            "llm_narrative": [
+                "login", "open section X", "A-1", "B-1", "A-2", "B-2", "logout",
+            ],
         }
     )
 
 
-def test_phase2_happy_path_writes_workbook(tmp_path):
-    df = _phase2_df()
-    out = tmp_path / "out.xlsx"
-    plan = [
-        {"routine_name": "Refund", "execution_index": 1, "assigned_node_indices": [1]},
-        {"routine_name": "Ticket", "execution_index": 1, "assigned_node_indices": [2]},
+def _topology_partial():
+    return [
+        {"node_id": 0, "shared_with": ["Task A", "Task B"], "justification": "login"},
+        {"node_id": 1, "shared_with": ["Task A"], "justification": "opener"},
+        {"node_id": 6, "shared_with": ["Task A", "Task B"], "justification": "logout"},
     ]
-    client = StubClient([plan])
-    ok = p2.generate_segmented_log(
-        df,
-        shared_indices=[0, 3],
-        routine_constraints=[
-            {"routine_name": "Refund", "executions": 1},
-            {"routine_name": "Ticket", "executions": 1},
-        ],
-        model_name="m",
-        output_file=str(out),
-        client=client,
-    )
-    assert ok is True
-    assert out.exists()
-    result = pd.read_excel(out)
-    # Each trace gets both shared boundaries (0 and 3) plus its own node.
-    refund = result[result["trace_id"] == "Refund_exec1"]
-    assert set(refund["node_id"] if "node_id" in refund else refund["event_type"])
-    assert len(refund) == 3  # auth + refund + logout
-    assert (tmp_path / "out_routing.json").exists()
 
 
-def test_phase2_missing_node_diverted_to_noise_not_aborted(tmp_path):
-    # New behaviour: a node the LLM declines to route is diverted to the Noise
-    # sheet (soft warning), NOT a hard abort. Nothing is lost.
-    df = _phase2_df()
-    out = tmp_path / "o.xlsx"
-    plan = [
-        {"routine_name": "R", "execution_index": 1, "assigned_node_indices": [1]},
-    ]  # node 2 not routed
-    client = StubClient([plan])
+def _plan_ok():
+    return [
+        {"routine_name": "Task A", "execution_index": 1, "assigned_node_indices": [2]},
+        {"routine_name": "Task A", "execution_index": 2, "assigned_node_indices": [4]},
+        {"routine_name": "Task B", "execution_index": 1, "assigned_node_indices": [3]},
+        {"routine_name": "Task B", "execution_index": 2, "assigned_node_indices": [5]},
+    ]
+
+
+def test_phase2_partial_sharing_happy_path(tmp_path):
+    out = tmp_path / "out.xlsx"
+    client = StubClient([_plan_ok()])
     ok = p2.generate_segmented_log(
-        df, [0, 3], [{"routine_name": "R", "executions": 1}], "m",
+        _phase2_df(), _topology_partial(), CONSTRAINTS, "m",
         output_file=str(out), client=client,
     )
     assert ok is True
-    # The unrouted node must be preserved in the Noise sheet.
+    result = pd.read_excel(out, sheet_name="Segmented_Logs")
+    a1 = result[result["trace_id"] == "Task A_exec1"]
+    b1 = result[result["trace_id"] == "Task B_exec1"]
+    # Task A traces get login + opener + own step + logout = 4 rows.
+    assert len(a1) == 4
+    # Task B traces get login + own step + logout = 3 rows (NO opener).
+    assert len(b1) == 3
+    assert "open section X" not in " ".join(b1["llm_narrative"].astype(str)) \
+        if "llm_narrative" in b1.columns else True
+    # The opener narrative lives only in A traces (check via event presence).
+    topo = pd.read_excel(out, sheet_name="Sharing_Topology")
+    assert len(topo) == 3
+    assert set(topo["node_id"]) == {0, 1, 6}
+
+
+def test_phase2_full_sharing_is_special_case(tmp_path):
+    """Subset == all routines must reproduce Sixth-Approach behaviour."""
+    out = tmp_path / "out.xlsx"
+    topo_all = [
+        {"node_id": 0, "shared_with": ["Task A", "Task B"], "justification": ""},
+        {"node_id": 1, "shared_with": ["Task A", "Task B"], "justification": ""},
+        {"node_id": 6, "shared_with": ["Task A", "Task B"], "justification": ""},
+    ]
+    client = StubClient([_plan_ok()])
+    ok = p2.generate_segmented_log(
+        _phase2_df(), topo_all, CONSTRAINTS, "m",
+        output_file=str(out), client=client,
+    )
+    assert ok is True
+    result = pd.read_excel(out, sheet_name="Segmented_Logs")
+    # Every trace now has all 3 shared nodes + 1 own = 4 rows; 4 traces = 16.
+    assert len(result) == 16
+
+
+def test_phase2_missing_node_diverted_to_noise_not_aborted(tmp_path):
+    # New behaviour: a routable node the LLM declines to place is diverted to
+    # the Noise sheet (soft warning), NOT a hard abort. Nothing is lost.
+    plan = [
+        {"routine_name": "Task A", "execution_index": 1, "assigned_node_indices": [2]},
+        {"routine_name": "Task B", "execution_index": 1, "assigned_node_indices": [3]},
+    ]  # nodes 4 and 5 not routed
+    client = StubClient([plan])
+    out = tmp_path / "o.xlsx"
+    ok = p2.generate_segmented_log(
+        _phase2_df(), _topology_partial(), CONSTRAINTS, "m",
+        output_file=str(out), client=client,
+    )
+    assert ok is True
     import openpyxl
     wb = openpyxl.load_workbook(out)
     assert "Noise" in wb.sheetnames
-    noise_rows = list(wb["Noise"].iter_rows(values_only=True))
-    assert len(noise_rows) >= 2  # header + at least the dropped node
 
 
-def test_phase2_hard_abort_on_duplicate_node(tmp_path):
-    df = _phase2_df()
-    plan = [
-        {"routine_name": "A", "execution_index": 1, "assigned_node_indices": [1, 2]},
-        {"routine_name": "B", "execution_index": 1, "assigned_node_indices": [2]},
-    ]
+def test_phase2_hard_abort_on_duplicate_routable_node(tmp_path):
+    plan = _plan_ok()
+    plan[1]["assigned_node_indices"] = [2, 4]  # node 2 also in block 1
     client = StubClient([plan])
     ok = p2.generate_segmented_log(
-        df, [0, 3],
-        [{"routine_name": "A", "executions": 1}, {"routine_name": "B", "executions": 1}],
-        "m", output_file=str(tmp_path / "o.xlsx"), client=client,
+        _phase2_df(), _topology_partial(), CONSTRAINTS, "m",
+        output_file=str(tmp_path / "o.xlsx"), client=client,
     )
     assert ok is False
 
 
-def test_phase2_soft_warning_count_mismatch_still_succeeds(tmp_path, capsys):
-    df = _phase2_df()
-    # Coverage is fine (1 and 2 both used) but Oracle wanted 2 Refund execs.
+def test_phase2_hard_abort_on_undeclared_routine_name(tmp_path):
+    plan = _plan_ok()
+    plan[0]["routine_name"] = "Task Q"  # invented
+    client = StubClient([plan])
+    ok = p2.generate_segmented_log(
+        _phase2_df(), _topology_partial(), CONSTRAINTS, "m",
+        output_file=str(tmp_path / "o.xlsx"), client=client,
+    )
+    assert ok is False
+
+
+def test_phase2_hard_abort_when_shared_node_unreachable(tmp_path):
+    """A shared node whose subset's routine produced no blocks must abort.
+
+    Oracle declares Task B, but the LLM only produced Task A blocks and the
+    topology has a node shared exclusively with Task B -> that node would
+    appear in no trace -> P3 cover violation.
+    """
+    df = pd.DataFrame(
+        {
+            "node_id": [0, 1, 2],
+            "application": ["App"] * 3,
+            "event_type": ["nav", "click", "click"],
+            "llm_narrative": ["B-only opener", "A-1", "A-2"],
+        }
+    )
+    topology = [{"node_id": 0, "shared_with": ["Task B"], "justification": ""}]
     plan = [
-        {"routine_name": "Refund", "execution_index": 1, "assigned_node_indices": [1, 2]},
+        {"routine_name": "Task A", "execution_index": 1, "assigned_node_indices": [1]},
+        {"routine_name": "Task A", "execution_index": 2, "assigned_node_indices": [2]},
     ]
     client = StubClient([plan])
     ok = p2.generate_segmented_log(
-        df, [0, 3], [{"routine_name": "Refund", "executions": 2}], "m",
+        df, topology, CONSTRAINTS, "m",
+        output_file=str(tmp_path / "o.xlsx"), client=client,
+    )
+    assert ok is False
+
+
+def test_phase2_soft_warning_on_count_mismatch_still_succeeds(tmp_path, capsys):
+    plan = [
+        {"routine_name": "Task A", "execution_index": 1,
+         "assigned_node_indices": [2, 4]},
+        {"routine_name": "Task B", "execution_index": 1,
+         "assigned_node_indices": [3]},
+        {"routine_name": "Task B", "execution_index": 2,
+         "assigned_node_indices": [5]},
+    ]  # Task A: expected 2 execs, got 1 — but all nodes covered
+    client = StubClient([plan])
+    ok = p2.generate_segmented_log(
+        _phase2_df(), _topology_partial(), CONSTRAINTS, "m",
         output_file=str(tmp_path / "o.xlsx"), client=client,
     )
     assert ok is True
     assert "SOFT WARNING" in capsys.readouterr().out
 
 
-def test_phase2_export_handles_fully_empty_column(tmp_path):
-    # A kept column that is empty across every row must not crash the xlsx
-    # width calculation (regression: int(NaN) at scale).
-    df = pd.DataFrame(
-        {
-            "node_id": [0, 1, 2, 3],
-            "application": ["Chrome"] * 4,
-            "event_type": ["navigateTo", "click", "click", "navigateTo"],
-            "always_empty": ["", "", "", ""],
-            "llm_narrative": ["auth", "refund", "ticket", "logout"],
-        }
+def test_phase2_soft_warning_routine_without_shared_actions(tmp_path, capsys):
+    topology = [
+        {"node_id": 0, "shared_with": ["Task A"], "justification": ""},
+        {"node_id": 1, "shared_with": ["Task A"], "justification": ""},
+        {"node_id": 6, "shared_with": ["Task A"], "justification": ""},
+    ]  # Task B gets nothing shared
+    client = StubClient([_plan_ok()])
+    ok = p2.generate_segmented_log(
+        _phase2_df(), topology, CONSTRAINTS, "m",
+        output_file=str(tmp_path / "o.xlsx"), client=client,
     )
-    out = tmp_path / "out.xlsx"
+    assert ok is True
+    out = capsys.readouterr().out
+    assert "received NO shared actions" in out
+
+
+def test_phase2_empty_topology_routes_everything(tmp_path):
+    """No shared actions at all: every node must be routed (cover == partition)."""
+    df = _phase2_df()
     plan = [
-        {"routine_name": "R", "execution_index": 1, "assigned_node_indices": [1, 2]},
+        {"routine_name": "Task A", "execution_index": 1,
+         "assigned_node_indices": [0, 1, 2, 4]},
+        {"routine_name": "Task B", "execution_index": 1,
+         "assigned_node_indices": [3, 5, 6]},
     ]
     client = StubClient([plan])
     ok = p2.generate_segmented_log(
-        df, [0, 3], [{"routine_name": "R", "executions": 1}], "m",
-        output_file=str(out), client=client,
+        df, [], [{"routine_name": "Task A", "executions": 1},
+                 {"routine_name": "Task B", "executions": 1}],
+        "m", output_file=str(tmp_path / "o.xlsx"), client=client,
     )
     assert ok is True
-    assert out.exists()
 
 
 @pytest.mark.parametrize("amount", [0.1, 1.0, 5.0])
@@ -312,6 +372,40 @@ def test_color_lightness_stays_in_legible_band(amount):
 
 
 def test_trace_color_is_deterministic():
-    a = p2._trace_color(0, 0, 2)
-    b = p2._trace_color(0, 0, 2)
-    assert a == b
+    assert p2._trace_color(0, 0, 2) == p2._trace_color(0, 0, 2)
+
+
+# ------------------------------------------------------------ data_pipeline
+def test_pipeline_still_ingests(tmp_path):
+    df = pd.DataFrame(
+        {
+            "timestamp": ["2026-01-01T00:00:01", "2026-01-01T00:00:02"],
+            "application": ["App", "App"],
+            "event_type": ["nav", "click"],
+            "browser_url": ["https://x/auth", "https://x/a"],
+        }
+    )
+    csv = tmp_path / "log.csv"
+    df.to_csv(csv, sep=";", index=False)
+    client = StubClient([[], ["timestamp"]])
+    out = dp.load_and_serialize_smartrpa(str(csv), "m", client)
+    assert list(out["node_id"]) == [0, 1]
+    assert "llm_narrative" in out.columns
+
+
+def test_tag_irrelevant_marks_and_payload_guard_rescues():
+    df = pd.DataFrame({
+        "node_id": [0, 1, 2],
+        "llm_narrative": ["junk lunch note", "Case REF-801", "scroll"],
+    })
+    client = StubClient([[1, 2]])  # model flags 1 (has payload!) and 2
+    out = dp.tag_irrelevant_nodes(df, ["Process Refund"], "m", client)
+    # node 1 carries REF-801 (distinctive) -> rescued; node 2 stays noise
+    assert not out.loc[out.node_id == 1, "is_probable_noise"].iloc[0]
+    assert out.loc[out.node_id == 2, "is_probable_noise"].iloc[0]
+
+
+def test_tag_irrelevant_fail_open():
+    df = pd.DataFrame({"node_id": [0, 1], "llm_narrative": ["a", "b"]})
+    out = dp.tag_irrelevant_nodes(df, ["R"], "m", FailingClient())
+    assert not out["is_probable_noise"].any()

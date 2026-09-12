@@ -1,7 +1,6 @@
 """Observability/economics layer: summarise token telemetry and cost.
 
-Reads the CSV written by ``SmartLLMClient._log_tokens`` (which now has a proper
-header row) and reports call counts, token volumes, and an estimated USD cost.
+Reads the CSV written by ``SmartLLMClient._log_tokens`` and reports call counts, token volumes, and an estimated USD cost.
 """
 
 from __future__ import annotations
@@ -12,9 +11,7 @@ import os
 import pandas as pd
 
 # Default per-1M-token prices (USD). Override via CLI for other models.
-# These are gemini-2.5-flash list prices as of mid-2026, which match the
-# telemetry committed under results/. Pass --input-price/--output-price when
-# reporting on a run made with a different model.
+# gemini-2.5-flash list price as of mid-2026.
 _DEFAULT_INPUT_PRICE = 0.30
 _DEFAULT_OUTPUT_PRICE = 2.50
 

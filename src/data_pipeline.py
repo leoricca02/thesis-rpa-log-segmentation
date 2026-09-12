@@ -31,10 +31,7 @@ _FALLBACK_IGNORE_COLUMNS = (
 
 _NOISE_SCHEMA: dict[str, Any] = {"type": "ARRAY", "items": {"type": "STRING"}}
 _COLUMN_SCHEMA: dict[str, Any] = {"type": "ARRAY", "items": {"type": "STRING"}}
-_RELEVANCE_SCHEMA: dict[str, Any] = {
-    "type": "ARRAY",
-    "items": {"type": "INTEGER"},
-}
+_RELEVANCE_SCHEMA: dict[str, Any] = {"type": "ARRAY", "items": {"type": "INTEGER"}}
 
 _MAX_SAMPLES_PER_COLUMN = 3
 _SAMPLE_TRUNCATE = 60
@@ -190,6 +187,126 @@ def _serialize_row(
     return " | ".join(parts)
 
 
+
+def _is_row_identifier(
+    df: pd.DataFrame, col: str, coverage: float = 0.9, distinctness: float = 0.9
+) -> bool:
+    """True if ``col`` behaves as a per-row identifier.
+
+    A column populated on nearly every row AND holding a near-unique value on
+    each (timestamps, GUIDs, screenshot paths, sequence numbers) separates every
+    pair of events trivially. Restoring one would defeat Phase 0B entirely,
+    inflate every prompt, and add no semantic signal — so such columns are never
+    restored, and are also excluded from the reference the guard compares against.
+    """
+    values = _nonempty_str_series(df[col])
+    if len(values) < coverage * len(df):
+        return False
+    return values.nunique() >= distinctness * len(values)
+
+
+def guard_against_collapse(df: pd.DataFrame, ignore_cols: list[str]) -> list[str]:
+    """Phase 0B-2: undo any part of Phase 0B's pruning that destroys evidence.
+
+    Phase 0B decides which columns are metadata but never checks what the
+    decision COSTS. Dropping a column can make two events that were previously
+    distinguishable serialise to identical text; when that happens the pipeline
+    has destroyed exactly the evidence H3 says Phase 2 depends on, and Phase 2
+    is left with no basis for separating those events beyond guessing.
+
+    This guard measures that collapse and restores the minimum set of columns
+    needed to undo it. It is schema-agnostic by construction: it never names a
+    column, an application, or a routine, and decides purely on whether pruning
+    destroys discriminability in the log actually being processed. It makes no
+    API call.
+
+    Args:
+        df: The noise-filtered log.
+        ignore_cols: The columns Phase 0B proposed to prune.
+
+    Returns:
+        A possibly shorter ignore-list.
+    """
+    print("\n--- Phase 0B-2: Collapse Guard ---")
+    columns = list(df.columns)
+    ignore = set(ignore_cols)
+
+    identifiers = {c for c in columns if _is_row_identifier(df, c)}
+    if identifiers:
+        print(f"[*] Per-row identifier column(s) {sorted(identifiers)} will never "
+              f"be restored (they separate every event trivially).")
+
+    def narratives(ign: set[str]) -> list[str]:
+        return [_serialize_row(row, columns, ign) for _, row in df.iterrows()]
+
+    # Reference: what the log CAN distinguish, ignoring trivial identifiers.
+    reference = narratives(identifiers)
+
+    def collapsed(ign: set[str]) -> list[list[int]]:
+        """Groups of events identical after pruning but distinct in the source."""
+        buckets: dict[str, list[int]] = {}
+        for idx, text in enumerate(narratives(ign)):
+            buckets.setdefault(text, []).append(idx)
+        return [
+            nodes for nodes in buckets.values()
+            if len(nodes) > 1 and len({reference[i] for i in nodes}) > 1
+        ]
+
+    groups = collapsed(ignore)
+    if not groups:
+        print("[*] Pruning collapses no distinguishable events; keeping the "
+              "Phase 0B selection unchanged.")
+        return sorted(ignore)
+
+    total = sum(len(g) for g in groups)
+    print(f"[!] Pruning collapsed {total} distinguishable event(s) into "
+          f"{len(groups)} indistinguishable group(s). Restoring evidence.")
+
+    def payload_likeness(col: str) -> tuple[float, int]:
+        """Rank a candidate by how much it looks like a business payload.
+
+        A real payload (a record id, a filename) is SPARSE and near-unique where
+        present: it appears only on the events that carry it. Incidental metadata
+        that merely happens to vary (a window size, a zoom factor) is DENSE and
+        low-cardinality. Preferring the former keeps the restored narrative
+        meaningful rather than merely distinguishable.
+        """
+        values = _nonempty_str_series(df[col])
+        if values.empty:
+            return (0.0, 0)
+        return (values.nunique() / len(values), -len(values))
+
+    restored: list[str] = []
+    while groups:
+        best, best_key = None, None
+        for col in sorted(ignore):
+            if col in identifiers:
+                continue
+            gain = len(groups) - len(collapsed(ignore - {col}))
+            if gain <= 0:
+                continue
+            key = (gain,) + payload_likeness(col)
+            if best_key is None or key > best_key:
+                best, best_key = col, key
+        if best is None:
+            print(f"    [!] {len(groups)} group(s) cannot be resolved by any "
+                  f"prunable column. Those events are indistinguishable in the "
+                  f"source log itself — a genuine H3 limit, not a pruning error.")
+            for nodes in groups[:5]:
+                print(f"        nodes {nodes}")
+            break
+        ignore.discard(best)
+        restored.append(best)
+        groups = collapsed(ignore)
+        print(f"    -> restored '{best}' (resolved {best_key[0]} group(s); "
+              f"{len(groups)} remaining)")
+
+    if restored:
+        print(f"[*] Restored {len(restored)} column(s) to preserve H3 evidence: "
+              f"{restored}")
+    return sorted(ignore)
+
+
 def tag_irrelevant_nodes(
     df: pd.DataFrame,
     routine_names: list[str],
@@ -198,32 +315,17 @@ def tag_irrelevant_nodes(
 ) -> pd.DataFrame:
     """Phase 0A-2: tag nodes semantically unrelated to the declared routines.
 
-    This is the application/relevance-aware complement to ``filter_noise_with_llm``
-    (which only removes noise *event types*). Some noise survives type-based
-    filtering because it shares an event type with real actions — e.g. a click
-    in an unrelated application (a music player, a chat app), a dead click that
-    navigates nowhere, or an irrelevant clipboard copy. Given the human-declared
-    routine names as the anchor of relevance, the LLM marks which serialised
-    events plausibly belong to NONE of those routines.
-
-    Crucially this does NOT hardcode any application or keyword: relevance is
-    judged *relative to the declared routines*, so the same Slack event is noise
-    for an "ERP refund" log but signal for a "reply to customer in Slack" log.
+    Relevance-aware complement to ``filter_noise_with_llm`` (which only removes
+    noise *event types*). Some noise survives type-based filtering because it
+    shares an event type with real actions (a junk clipboard copy/paste, a
+    click in an unrelated app, a dead click). Given the human-declared routine
+    names as the relevance anchor, the LLM marks which serialised events belong
+    to NONE of those routines. No application or keyword is hardcoded: relevance
+    is judged relative to the declared routines.
 
     Tagged nodes are not dropped — they are marked ``is_probable_noise=True`` so
     Phase 2 can divert them into a reviewable noise bucket instead of being
-    forced (wrongly) into a business routine.
-
-    Args:
-        df: Serialised log with 'node_id' and 'llm_narrative' columns.
-        routine_names: The declared routine names (the relevance anchor).
-        model_name: Gemini model identifier.
-        client: A shared SmartLLMClient instance.
-
-    Returns:
-        The same DataFrame with a boolean 'is_probable_noise' column added.
-        On API failure, every node is tagged False (fail-open: treat nothing as
-        noise, exactly reproducing the pre-upgrade behaviour).
+    forced into a business routine. Fail-open: on API failure nothing is tagged.
     """
     print("\n--- Phase 0A-2: Relevance-Aware Noise Tagging ---")
     df = df.copy()
@@ -238,17 +340,14 @@ def tag_irrelevant_nodes(
         for nid, nar in zip(df["node_id"], df["llm_narrative"].astype(str))
     )
     routines_block = "\n".join(f"- {name}" for name in routine_names)
-
     system_prompt = (
         "You are an RPA log-analysis engine. A human operator is segmenting a "
         "UI log into executions of these declared business routines:\n"
         f"{routines_block}\n\n"
         "Some events in the log do NOT belong to ANY of these routines. They "
         "are contextual noise that survived basic filtering, such as:\n"
-        "- actions performed in an application unrelated to the routines "
-        "(e.g. a music player or chat app when the routines are office tasks);\n"
-        "- dead interactions that accomplish nothing (clicks on blank areas, "
-        "navigation that goes nowhere);\n"
+        "- actions performed in an application unrelated to the routines;\n"
+        "- dead interactions that accomplish nothing;\n"
         "- copying or pasting content unrelated to the routines.\n\n"
         "Judge relevance ONLY relative to the declared routines above — do not "
         "assume any application is inherently noise. Return ONLY a JSON array "
@@ -281,10 +380,9 @@ def tag_irrelevant_nodes(
             flagged_ids.add(idx)
 
     # Payload guard: never divert a node whose narrative carries a DISTINCTIVE
-    # value (one that appears on <=2 nodes). Real payloads (record ids, pasted
-    # values) are rare-by-definition; generic repeated labels ("Resolve") are
-    # not. This protects signal-bearing nodes from false-positive noise tagging
-    # without any column-name assumptions.
+    # value (appears on <=2 nodes). Real payloads (record ids, pasted values)
+    # are rare-by-definition; generic repeated labels are not. Protects signal
+    # from false-positive noise tagging, schema-agnostically.
     protected = _distinctive_value_nodes(df)
     rescued = flagged_ids & protected
     if rescued:
@@ -310,7 +408,6 @@ def _distinctive_value_nodes(df: pd.DataFrame, rarity: int = 2) -> set[int]:
     token_nodes: dict[str, set[int]] = {}
     narr = dict(zip(df["node_id"].astype(int), df["llm_narrative"].astype(str)))
     for nid, text in narr.items():
-        # tokens that look like identifiers/values: contain a digit or a hyphen
         for tok in _re.findall(r"[A-Za-z0-9][A-Za-z0-9_\-./@]{2,}", text):
             if any(ch.isdigit() for ch in tok):
                 token_nodes.setdefault(tok, set()).add(nid)
@@ -361,7 +458,8 @@ def load_and_serialize_smartrpa(
     if df.empty:
         raise ValueError("All rows were filtered as noise; nothing to segment.")
 
-    ignore_cols = set(identify_metadata_columns_with_llm(df, model_name, client))
+    ignore_cols = identify_metadata_columns_with_llm(df, model_name, client)
+    ignore_cols = set(guard_against_collapse(df, ignore_cols))
 
     columns = list(df.columns)
     kept = [c for c in columns if c not in ignore_cols]

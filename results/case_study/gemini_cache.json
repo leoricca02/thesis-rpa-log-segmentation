@@ -1,0 +1,126 @@
+{
+    "31e86146a38a9a371af1eb635fa02f5b": [],
+    "bedbcfb96df7fde60db1e558b58c973b": [
+        "timestamp",
+        "user",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "worksheets",
+        "sheets",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "hotkey",
+        "id",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_title",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "35bbc2d9cef42dae32ffa07a42fdcfb0": [],
+    "7c66c54b7a320ae4a3915e41709f690f": [
+        18,
+        30,
+        42,
+        54,
+        66,
+        78,
+        90,
+        102
+    ],
+    "672ba7b3dacbfa91c0c049891d435b2e": {
+        "reasoning": "The log records four business routines interleaved in a single browser session. Nodes 0 and 1 are the initial authentication actions that setup the portal session, which is shared among all four routines. Node 2 and Node 3 open and navigate to the Webmail inbox; this action is shared by Travel Authorization, Expense Reimbursement, and Purchase Order Approval as they all rely on email links/attachments, whereas Student Grant Disbursement does not use the webmail. Nodes 4 and 5 open the U-GOV accounting module, which is exclusively used by the Expense Reimbursement routine for booking accounting entries. Node 6 opens the Purchase and Supplier Portal ('Portale Acquisti e Fornitori'), which is shared between Purchase Order Approval (processing purchase orders) and Student Grant Disbursement (registering recipients under 'anagrafica-percipienti'). Finally, Node 113 is the logout step, which terminates the global session and serves all four routines.",
+        "shared_actions": [
+            {
+                "node_id": 0,
+                "shared_with_routines": [
+                    "Travel Authorization",
+                    "Expense Reimbursement",
+                    "Purchase Order Approval",
+                    "Student Grant Disbursement"
+                ],
+                "justification": "Navigates to the shared authentication portal to begin the global session."
+            },
+            {
+                "node_id": 1,
+                "shared_with_routines": [
+                    "Travel Authorization",
+                    "Expense Reimbursement",
+                    "Purchase Order Approval",
+                    "Student Grant Disbursement"
+                ],
+                "justification": "Logs in using Sapienza credentials to authenticate the global session."
+            },
+            {
+                "node_id": 2,
+                "shared_with_routines": [
+                    "Travel Authorization",
+                    "Expense Reimbursement",
+                    "Purchase Order Approval"
+                ],
+                "justification": "Opens Webmail, which is used to access emails and attachments for travel, expenses, and purchase orders."
+            },
+            {
+                "node_id": 3,
+                "shared_with_routines": [
+                    "Travel Authorization",
+                    "Expense Reimbursement",
+                    "Purchase Order Approval"
+                ],
+                "justification": "Navigates to the webmail inbox to access incoming business emails."
+            },
+            {
+                "node_id": 4,
+                "shared_with_routines": [
+                    "Expense Reimbursement"
+                ],
+                "justification": "Opens the U-GOV accounting system, which is only used by the Expense Reimbursement routine for accounting entries."
+            },
+            {
+                "node_id": 5,
+                "shared_with_routines": [
+                    "Expense Reimbursement"
+                ],
+                "justification": "Navigates to the contabile section, enabling bookkeepings for expense reimbursements."
+            },
+            {
+                "node_id": 6,
+                "shared_with_routines": [
+                    "Purchase Order Approval",
+                    "Student Grant Disbursement"
+                ],
+                "justification": "Opens the Purchase and Supplier Portal, which is used for managing purchase orders and registering grant recipients."
+            },
+            {
+                "node_id": 113,
+                "shared_with_routines": [
+                    "Travel Authorization",
+                    "Expense Reimbursement",
+                    "Purchase Order Approval",
+                    "Student Grant Disbursement"
+                ],
+                "justification": "Logs out and cleans up the portal session for all executed routines."
+            }
+        ]
+    }
+}

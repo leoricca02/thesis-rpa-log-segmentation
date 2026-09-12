@@ -1,103 +1,78 @@
 <div align="center">
 
-# Segmentation of User Interface Logs for Robotic Process Automation with Shared-Action Routines: A Semi-Supervised LLM-Based Approach
+# Segmentation of UI Logs for RPA with Shared-Action Routines
 
-**A three-stage, semi-supervised pipeline that reconstructs discrete RPA executions
-from a single, noisy, interleaved user-interaction log.**
+**A semi-supervised, LLM-based pipeline that untangles a single interleaved user-interaction
+log into discrete robot executions — including when routines *share* actions only partially.**
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Gemini](https://img.shields.io/badge/LLM-Gemini%203.5%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/tests-40%20passing-2CA02C)](#7-testing)
-[![Benchmark](https://img.shields.io/badge/benchmark-RCIS--2021%20Case%203.x-8C564B)](#5-datasets)
+[![Tests](https://img.shields.io/badge/tests-40%20passing-2CA02C)](#11-testing)
+[![Case](https://img.shields.io/badge/benchmark-Case%203.4%20%2B%20partial%20sharing-8C564B)](#5-the-case-study)
 
 </div>
 
 ---
 
-> **Thesis project** — *Master thesis, Engineering in Computer Science*
-> Author: Leonardo Ricca · Supervisor: Andrea Marrella, Andrea Agostinelli · Sapienza Università Di Roma, 2026.
+> **Master thesis** — *Engineering in Computer Science*
+> Author: **Leonardo Ricca** · Supervisors: **Andrea Marrella**, **Andrea Agostinelli**
+> Sapienza Università di Roma, 2026
+>
+> This repository contains the implementation, the case-study logs, and the artefacts
+> behind every result reported in **Chapter 7** of the thesis.
 
 ---
 
 ## Table of contents
 
-1. [The problem](#1-the-problem)
-2. [The approach](#2-the-approach)
-3. [Architecture](#3-architecture)
-4. [Repository layout](#4-repository-layout)
-5. [Datasets](#5-datasets)
-6. [Quickstart](#6-quickstart)
-7. [Testing](#7-testing)
-8. [Output format](#8-output-format)
-9. [Engineering notes](#9-engineering-notes)
-10. [Cost and observability](#10-cost-and-observability)
-11. [Design decisions and limitations](#11-design-decisions-and-limitations)
-12. [Reproducibility](#12-reproducibility)
+1. [The problem](#1-the-problem) · 2. [What this work adds](#2-what-this-work-adds) · 3. [Architecture](#3-architecture)
+4. [Repository layout](#4-repository-layout) · 5. [The case study](#5-the-case-study) · 6. [Quickstart](#6-quickstart)
+7. [Reported results](#7-reported-results) · 8. [Reproducing them](#8-reproducing-them) · 9. [Output format](#9-output-format)
+10. [Engineering notes](#10-engineering-notes) · 11. [Testing](#11-testing) · 12. [Cost and provenance](#12-cost-and-provenance)
+13. [Limitations](#13-limitations)
 
 ---
 
 ## 1. The problem
 
-Robotic Process Automation starts from a **UI log**: a flat, chronological dump of
-every action a human performed at the interface — clicks, navigations, copies,
-pastes, keystrokes. Process-mining tools can learn a routine from such a log, but
-only if the log contains *one clean routine at a time*.
+Robotic Process Automation starts from a **UI log**: a flat, chronological record of what a
+human did at the interface — clicks, navigations, copies, pastes, keystrokes. A process-mining
+tool can learn a routine from such a log, but only if the log contains one clean routine at a time.
 
-Real logs do not. A single recording session typically contains:
+A real recording session does not. It contains several business routines, each executed more
+than once, **interleaved** — and it contains actions that belong to more than one of them.
 
-| Difficulty | What it looks like in the log |
-| :-- | :-- |
-| **Multiple routines** | "Approve Loan" and "Issue Card" recorded in the same session |
-| **Multiple executions** | The same routine repeated four times with different payloads |
-| **Interleaving** | The user switches routine mid-way; events of A and B alternate |
-| **Shared boundaries** | A single login at the start and one logout at the end serve *every* routine |
-| **Semantic noise** | Mouse moves, hovers, scrolls, zoom changes, window focus events |
-| **Contextual noise** | Real clicks in applications unrelated to the task (a chat app, a music player) |
-| **Payload-less actions** | A bare `click: Submit` that carries no clue about which execution it closes |
+Segmenting that by hand is the bottleneck. Segmenting it with rules fails, because the cues are
+**semantic** rather than structural: deciding that a navigation to `/acquisti/anagrafica-percipienti`
+belongs to *both* the purchasing routine *and* the grant routine requires understanding what
+those routines are for.
 
-Segmenting this by hand is the bottleneck. Segmenting it with rules fails because
-the cues are **semantic**, not structural: knowing that `crm/billing → paste REF-801`
-and a later `click: Confirm` belong to the *same* refund requires understanding what
-the actions mean.
+## 2. What this work adds
 
-This project asks whether a **generative LLM**, constrained by a small amount of
-human knowledge, can do that segmentation reliably enough to be useful.
+Prior approaches assume that shared actions are shared by **every** routine — a single login at
+the start, a single logout at the end. The thesis calls this assumption **A1** and relaxes it to
+**A1′**: an action may be shared by an arbitrary **subset** of the routines.
 
----
+That relaxation is the difference between a boundary-detection problem and a **topology-inference**
+problem. Phase 1 no longer returns a list of globally shared nodes; it returns, for each shared
+action, *which routines share it*. A trace is then reassembled with exactly the shared actions its
+own subset entitles it to — no more, no less.
 
-## 2. The approach
-
-The pipeline is **semi-supervised**: the human is not asked to label events, only to
-declare *what should be there*. That declaration — the **Oracle constraint** — is
-collected once by an interactive wizard at startup:
+The pipeline is **semi-supervised**. The human is never asked to label events, only to declare
+what should be there — the **Oracle constraint**, collected once by a wizard at startup:
 
 ```
-How many distinct business routines are in this log? 2
- -> Short name for Routine 1: Approve Loan
- -> How many times was 'Approve Loan' executed? 4
- -> Short name for Routine 2: Issue Card
- -> How many times was 'Issue Card' executed? 4
+How many distinct business routines are in this log? 4
+ -> Short name for Routine 1: Travel Authorization
+ -> How many times was 'Travel Authorization' executed? 2
+ ...
 ```
 
-Everything else is inferred by the model. Three ideas carry the design:
-
-**① Decompose the reasoning.** Asking one prompt to "segment this log" fails: the
-model must simultaneously filter noise, recognise routines, and count executions.
-The work is therefore split into successive phases, each with a narrow question and
-a schema-constrained answer.
-
-**② Remove the gravity well first.** Actions shared by *all* routines (the login,
-the logout) attract every segmentation hypothesis and blur the boundaries between
-routines. Phase 1 isolates them **before** routing, so Phase 2 reasons only about
-genuinely routine-specific events. The shared boundaries are re-attached to every
-reconstructed trace afterwards — each trace stays individually replayable.
-
-**③ Translate structure into language.** A wide, sparse CSV row is not something an
-LLM reads well. Every row is serialised into one anchored sentence built only from
-business-relevant columns:
+Everything else is inferred. A wide, sparse CSV row is not something a language model reads well,
+so every row is serialised into one anchored sentence built only from business-relevant columns:
 
 ```
-[APP: Chrome] action: paste | browser_url: https://bank.intra/loans | clipboard_content: REF-801
+[APP: Chrome] action: navigateTo | category: Browser | browser_url: https://amm.diag.uniroma1.it/auth
 ```
 
 ---
@@ -106,28 +81,31 @@ business-relevant columns:
 
 ```mermaid
 flowchart TD
-    A["Raw SmartRPA CSV<br/>semicolon-delimited, wide, sparse"] --> B
+    A["Raw SmartRPA CSV<br/>49 columns, semicolon-delimited, sparse"] --> B
 
     subgraph P0["PHASE 0 — Self-cleaning ingestion"]
-        B["Chronological sort<br/>stable, by timestamp if present"] --> C["<b>0A</b> Dynamic noise filtration<br/>LLM drops noise event types"]
-        C --> D["<b>0B</b> Dynamic feature selection<br/>LLM prunes metadata columns"]
-        D --> E["Serialisation<br/>node_id + llm_narrative"]
+        B["Chronological sort"] --> C["<b>0A</b> Noise filtration<br/>LLM drops noise event types"]
+        C --> D["<b>0B</b> Feature selection<br/>LLM prunes metadata columns"]
+        D --> E["<b>0B-2</b> Collapse guard<br/>restores columns if narratives collapse"]
+        E --> F["Serialisation<br/>node_id + llm_narrative"]
     end
 
-    W["Human-in-the-Loop wizard<br/>routine names + execution counts"] --> F
-    E --> F["<b>0A-2</b> Relevance-aware tagging<br/>events unrelated to any declared routine"]
+    W["Human-in-the-Loop wizard<br/>routine names + execution counts"] --> G
+    F --> G["<b>0A-2</b> Relevance tagging<br/>events unrelated to any declared routine"]
 
-    F --> G["<b>PHASE 1</b> — Boundary reasoning<br/>globally shared login/logout nodes"]
-    G --> H["<b>PHASE 2</b> — Execution mapping<br/>route each node into one execution bucket"]
+    G --> H["<b>PHASE 1</b> — Sharing-topology inference<br/>for each shared action: <i>which routines share it</i>"]
+    H --> R{"--review?"}
+    R -->|"yes"| I["Operator approves or edits<br/>the inferred subsets"]
+    R -->|"no"| J
+    I --> J["<b>PHASE 2</b> — Subset-aware routing<br/>each remaining node into one execution"]
 
-    H --> V{"Validation"}
-    V -->|"node in 2 blocks"| X["ABORT — data corruption"]
+    J --> V{"Validation as a cover"}
+    V -->|"node in 2 executions"| X["ABORT — data corruption"]
     V -->|"node routed nowhere"| N["Divert to Noise sheet"]
-    V -->|"execution count mismatch"| S["Soft warning, continue"]
-    V -->|"ok"| R["Re-attach shared boundaries<br/>to every trace"]
+    V -->|"ok"| K["Reassemble: each trace gets<br/>only the shared actions its subset allows"]
 
     N --> O
-    R --> O["Colour-coded XLSX<br/>+ routing audit JSON"]
+    K --> O["XLSX: Segmented_Logs + Sharing_Topology + Noise<br/>plus routing audit JSON"]
 
     style P0 fill:#eef5fb,stroke:#1F77B4
     style W fill:#fff4e6,stroke:#FF7F0E
@@ -135,404 +113,277 @@ flowchart TD
     style O fill:#eaf6ea,stroke:#2CA02C
 ```
 
-### The phases in detail
+| Phase | Question asked | Failure policy |
+| :-- | :-- | :-- |
+| **0A** | Which `event_type` values are semantic noise (mouse moves, hovers, scrolls, focus changes)? The model is shown the log's actual event vocabulary, so nothing is hard-coded. | **Fail-open** — on API error the frame is returned untouched. Keeping too many rows is recoverable; dropping real actions is not. |
+| **0B** | Which *columns* are pure system metadata rather than business context? Each column is shown with up to three distinct, non-empty samples — critical on sparse logs. | **Fallback list** on API error. `application` and `event_type` are anchors and are never pruned. |
+| **0B-2** | Did pruning make distinct events serialise to identical text? The guard measures that collapse and restores the minimum set of columns that separates them again. | Local computation, no API call. |
+| **0A-2** | Given the declared routine names, which events belong to *none* of them? Catches noise that survives type-based filtering — a genuine click, but in an unrelated application. A **payload guard** protects any node carrying a distinctive token, so real payloads are never diverted. | **Fail-open** — on API error nothing is tagged. Tagged nodes are diverted for review, never deleted. |
+| **1** | For each candidate shared action, **which subset of routines** shares it? Reasoning is emitted before the answer, so the model commits to an argument before committing to a set. | **Fail-fast** on API error. Hallucinated node ids are dropped with a warning rather than treated as a crash. |
+| **2** | Distribute the remaining nodes into exactly the execution buckets the Oracle declared, using routine meaning for *which routine* and payload continuity for *which execution*. | **Layered** — a node in two executions is fatal (abort); a node routed nowhere is diverted to the Noise sheet; an Oracle-count mismatch is a warning that still produces output. |
 
-<table>
-<tr><th align="left">Phase</th><th align="left">Question asked</th><th align="left">Failure policy</th></tr>
-
-<tr valign="top"><td><b>0A</b><br/><sub>Noise filtration</sub></td>
-<td>Given the inventory of <code>event_type</code> values and their frequencies, which types are
-<i>semantic noise</i> — mouse moves, hovers, scrolls, focus changes?<br/>
-Nothing is hard-coded: the model is shown the actual event vocabulary of the log, so the
-pipeline stays vendor-agnostic.</td>
-<td><b>Fail-open.</b> On any API error the original frame is returned untouched. Keeping too
-many rows is recoverable; silently dropping real actions is not.</td></tr>
-
-<tr valign="top"><td><b>0B</b><br/><sub>Feature selection</sub></td>
-<td>Which <i>columns</i> are pure system metadata (timestamps, GUIDs, window sizes, screenshot
-paths) versus business context (URLs, button text, clipboard content)?<br/>
-Each column is presented with up to three <i>distinct, non-empty</i> samples — critical on
-sparse logs where the first cell of a meaningful column is usually blank.</td>
-<td><b>Fallback list.</b> On API error a conservative hard-coded metadata list is used.
-<code>application</code> and <code>event_type</code> are anchors and are never pruned.</td></tr>
-
-<tr valign="top"><td><b>0A-2</b><br/><sub>Relevance tagging</sub></td>
-<td>Given the routine names the human declared, which events belong to <i>none</i> of them?<br/>
-This catches noise that survives type-based filtering because it shares an event type with
-real work — a genuine click, but in Spotify or Slack. Relevance is judged <i>relative to the
-declared routines</i>, so the same Slack event is noise for an ERP log and signal for a
-"reply to customer" log.<br/>
-A <b>payload guard</b> protects any node whose narrative carries a distinctive token — one
-appearing on at most two nodes. Real payloads (record ids, pasted values) are rare by
-definition; generic repeated labels are not. This prevents false-positive noise tagging
-from discarding signal.</td>
-<td><b>Fail-open.</b> On API error nothing is tagged, exactly reproducing the pre-upgrade
-behaviour. Tagged nodes are never deleted — only diverted for review.</td></tr>
-
-<tr valign="top"><td><b>1</b><br/><sub>Boundary reasoning</sub></td>
-<td>Which nodes are <i>globally shared</i> boundaries — setup every routine depends on, teardown
-that closes the whole session?<br/>
-The response schema lists <code>reasoning</code> <i>before</i> <code>shared_indices</code>, which forces the model to
-commit to an argument before committing to numbers. A worked example in the prompt teaches
-the key distinction: a first action already carrying routine-specific payload is the first
-step of one routine, not a shared boundary.</td>
-<td><b>Fail-fast on API error</b> (returns <code>None</code>, the orchestrator aborts).
-Hallucinated node ids are a different matter: they are dropped with a warning, not treated
-as a crash.</td></tr>
-
-<tr valign="top"><td><b>2</b><br/><sub>Execution mapping</sub></td>
-<td>Distribute the remaining nodes into <i>exactly</i> the execution buckets the Oracle declared.
-The routine name is the semantic anchor: meaning decides <i>which routine</i>; payload
-continuity and chronology decide <i>which execution</i>. Payload-less actions attach to the
-execution whose preceding payload they logically complete.</td>
-<td><b>Layered.</b> A node in two blocks is fatal — real corruption, abort. A node routed
-nowhere is diverted to the Noise sheet with a loud warning. An execution-count mismatch
-against the Oracle is a soft warning: output is still produced, and the discrepancy is
-visible to the operator.</td></tr>
-</table>
-
-> **Nothing is ever silently lost.** Every input event ends up either in a reconstructed
-> trace or in the reviewable `Noise` sheet of the workbook.
+> **Nothing is ever silently lost.** Every input event ends up either in a reconstructed trace or
+> in the reviewable `Noise` sheet.
 
 ---
 
 ## 4. Repository layout
 
 ```
-thesis_project/
-│
-├── src/                              # Pipeline source — no file imports another by path
-│   ├── main.py                       # Orchestrator + Human-in-the-Loop wizard + CLI
-│   ├── data_pipeline.py              # Ingestion, Phase 0A / 0B / 0A-2, serialisation
-│   ├── phase1_boundary_reasoning.py  # Phase 1 — globally shared boundaries
-│   ├── phase2_execution_mapping.py   # Phase 2 — routing, validation, XLSX + JSON export
-│   ├── smart_llm_client.py           # Gemini REST client: cache, telemetry, retry/back-off
-│   └── analyze_telemetry.py          # Token/cost observability report
+.
+├── src/
+│   ├── main.py                       # Orchestrator, Oracle wizard, --review flow, CLI
+│   ├── data_pipeline.py              # Ingestion, Phase 0A / 0B / 0B-2 / 0A-2, serialisation
+│   ├── phase1_boundary_reasoning.py  # Phase 1 — sharing-topology inference (A1')
+│   ├── phase2_execution_mapping.py   # Phase 2 — subset-aware routing, validation, export
+│   ├── smart_llm_client.py           # Gemini REST client: cache, telemetry, retry, budget translation
+│   ├── analyze_telemetry.py          # Token/cost observability report
+│   ├── phase1_repeat.py              # Repeatability harness for Phase 1  (thesis 7.4)
+│   └── phase2_repeat.py              # Repeatability harness for Phase 2  (thesis 7.3)
 │
 ├── tests/                            # 40 pytest cases — fully offline
-│   ├── test_pipeline_phases.py       # Phases driven by a scripted stub client
-│   └── test_smart_llm_client.py      # Client driven by an injected fake transport
 │
-├── data/                             # Evaluation logs, ordered by experimental stage
-│   ├── 01_pilot/                     # Stage 1 — small logs, internal portal scenario
-│   ├── 02_interleaving/              # Stage 2 — CRM scenario, increasing interleaving
-│   ├── 03_stress/                    # Stage 3 — 50–69 events, multi-application
-│   └── 04_noise/                     # Stage 4 — noise injection, up to 193 events
+├── data/
+│   ├── case_study/                   # The two logs of thesis Table 6.2
+│   │   ├── caso_studio_trasferte_2exec.csv        # primary artefact, 114 rows
+│   │   └── caso_studio_trasferte_2exec_hard.csv   # A3-degraded variant (6.10)
+│   └── exploratory/                  # Preliminary logs, not cited in Chapter 7
 │
-├── results/                          # Reference artefacts from a real run (committed)
-│   ├── Final_Segmented_Master_Log.xlsx
-│   ├── Final_Segmented_Master_Log_routing.json
-│   ├── gemini_cache.json             # Cached LLM responses — enables a zero-cost replay
-│   ├── token_telemetry.csv
-│   └── token_telemetry_old.csv
+├── results/
+│   ├── case_study/                   # The artefacts behind Chapter 7
+│   │   ├── Final_Segmented_Master_Log.xlsx
+│   │   ├── Final_Segmented_Master_Log_routing.json
+│   │   ├── token_telemetry.csv       # reproduces Table 7.9 exactly — see section 12
+│   │   └── gemini_cache.json         # cached responses for Phases 0-1
+│   └── exploratory/                  # Outputs of the preliminary runs, not cited
 │
-├── .env.example                      # Template for the API key — copy to .env
-├── .gitignore                        # .env and runtime artefacts stay out of the repo
-├── pytest.ini                        # pythonpath=src, so tests import modules unchanged
-├── requirements.txt
-└── README.md
+├── .env.example · .gitignore · pytest.ini · requirements.txt · README.md
 ```
 
-> **Note on the layout.** Source files were relocated into `src/` with no change to any
-> logic. `pytest.ini` declares `pythonpath = src`, so the test suite imports
-> `data_pipeline`, `phase1_boundary_reasoning`, … by plain module name exactly as it did
-> when everything sat in the project root. The only line touched in the sources was the
-> default sample-log path in `main.py`, updated to point at the file's new location.
->
-> The move is verified end to end: replaying the reference run against the committed
-> response cache reproduces `results/Final_Segmented_Master_Log.xlsx` and its routing JSON
-> identically, with zero network calls.
+`pytest.ini` declares `pythonpath = src`, so the tests import `data_pipeline`,
+`phase1_boundary_reasoning`, … by plain module name.
 
 ---
 
-## 5. Datasets
+## 5. The case study
 
-All logs follow the **SmartRPA** export format: semicolon-delimited and highly sparse —
-49 columns, of which typically 8–15 ever hold a value. They instantiate the interleaving
-scenarios of the **RCIS-2021 Case 3.x** benchmark family, and are ordered here by the
-stage of the study in which they were used.
+The evaluation uses a purpose-built administrative case study: four routines of a university
+department, recorded in one browser session, **interleaved**, with **two executions each** and
+realistic noise. It instantiates **Case 3.4** — the hardest interleaving class — *and* partial
+sharing, which is what the thesis set out to test.
 
-| Stage | File | Events | Applications | What it probes |
-| :-- | :-- | --: | :-- | :-- |
-| **01 · pilot** | `test_case3.1` … `3.4.csv` | 14 | Chrome, Clipboard | Baseline feasibility: two short routines on an internal portal, copy/paste payloads, progressively interleaved |
-| **02 · interleaving** | `test2_case3.1` … `3.4.csv` | 10 | Chrome | Fixed length, rising interleaving: `3.1` is block-sequential, `3.4` alternates routines event by event. Isolates interleaving as the single variable |
-| **03 · stress** | `stress_case3_1` … `3_4.csv` | 50 | Chrome | Scale: four executions per routine, long-range payload continuity |
-| | `stress2_case3_4.csv` | 69 | Chrome, Excel, Citrix, CardTool | Cross-application routines and desktop events, not just browser navigation |
-| **04 · noise** | `test_noise_case.csv` | 19 | Chrome | Minimal noise-filtration case: mouse moves and hovers interleaved with real actions. Uses a reduced 10-column schema, which also verifies that Phase 0B generalises beyond the full SmartRPA header |
-| | `hard_case3_4_noisy.csv` | 193 | Chrome, Spotify, Slack | The hard case: heavy `mouseMove`/`scroll`/`zoomChange`/`resizeWindow` noise **plus** genuine events in unrelated applications — the scenario Phase 0A-2 exists for |
+| Routine | Starts from | Shares with |
+| :-- | :-- | :-- |
+| **Travel Authorization** | webmail request | login/logout, webmail opener |
+| **Expense Reimbursement** | webmail request | login/logout, webmail opener, accounting prerequisite |
+| **Purchase Order Approval** | webmail request | login/logout, webmail opener, procurement opener |
+| **Student Grant Disbursement** | an internal portal notice, *not* an email | login/logout, procurement opener |
 
-<details>
-<summary><b>Mapping from the original flat filenames</b> (for traceability against the thesis text)</summary>
+That last row is the design decision that makes the case study work: because R4 does not start
+from an email, the webmail opener is a genuine **three-of-four subset** rather than a global
+prerequisite. The ground-truth topology therefore contains a 4/4 subset, a 3/4, a 2/4 and a
+single-routine prerequisite — every subset size the relaxed assumption allows.
 
-| Original path | Current path |
-| :-- | :-- |
-| `test1/test_case3.{1..4}.csv` | `data/01_pilot/test_case3.{1..4}.csv` |
-| `test2/test2_case3.{1..4}.csv` | `data/02_interleaving/test2_case3.{1..4}.csv` |
-| `stress_case3_{1..4}.csv` | `data/03_stress/stress_case3_{1..4}.csv` |
-| `stress2_case3_4.csv` | `data/03_stress/stress2_case3_4.csv` |
-| `test2/test_noise_case.csv` | `data/04_noise/test_noise_case.csv` |
-| `hard_case3_4_noisy.csv` | `data/04_noise/hard_case3_4_noisy.csv` |
+| File | Rows | Business events | Noise | Case |
+| :-- | --: | --: | :-- | :-- |
+| `caso_studio_trasferte_2exec.csv` | 114 | 98 | 8 events | 3.4 + partial sharing |
+| `caso_studio_trasferte_2exec_hard.csv` | 114 | 98 | 8 events | 3.4, one dependency's lexical trace removed |
 
-File contents are byte-identical to the originals; only their location changed.
-</details>
+Both follow the SmartRPA schema: 49 columns, semicolon-delimited, extremely sparse — only 18
+columns are ever populated, and only five carry a value on every row.
 
 ---
 
 ## 6. Quickstart
 
-### Install
-
 ```bash
-git clone <repository-url>
-cd thesis_project
-
+git clone <repository-url> && cd <repo>
 python -m venv .venv
-# Windows:  .venv\Scripts\activate
-# macOS/Linux:  source .venv/bin/activate
-
+# Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-### Configure
+cp .env.example .env        # then paste your key from https://aistudio.google.com/apikey
+```
 
 ```bash
-cp .env.example .env      # Windows: copy .env.example .env
+# Full pipeline on the case study (the default log)
+python src/main.py
+
+# Any other log
+python src/main.py data/case_study/caso_studio_trasferte_2exec_hard.csv
+
+# Pause after Phase 1 to inspect and edit the inferred sharing topology
+python src/main.py --review
+
+# Token and cost report
+python src/analyze_telemetry.py results/case_study/token_telemetry.csv
 ```
 
-Then open `.env` and paste your key from [Google AI Studio](https://aistudio.google.com/apikey):
-
-```ini
-GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-3.5-flash
-```
-
-> `.env` is git-ignored. The model is environment-driven, so switching to
-> `gemini-3.5-flash-lite` for a high-request-per-day stress run needs no code change.
-
-### Run
-
-```bash
-python src/main.py data/04_noise/test_noise_case.csv
-```
-
-> The path argument is optional: omitted, it defaults to
-> `data/04_noise/test_noise_case.csv`, resolved against the repository root so it works
-> from any working directory.
-
-The wizard asks for the routines and their execution counts, then the pipeline runs
-end to end. Two files are written **to the current working directory**:
-
-- `Final_Segmented_Master_Log.xlsx` — the colour-coded segmented log
-- `Final_Segmented_Master_Log_routing.json` — the routing audit trail
-
-Useful flags:
-
-```bash
-# Disable Phase 0A-2 relevance tagging, reproducing the pre-upgrade behaviour
-python src/main.py data/03_stress/stress2_case3_4.csv --no-relevance-filter
-
-# Token and cost report for the last run
-python src/analyze_telemetry.py
-
-# Report against a stored telemetry file, with custom pricing
-python src/analyze_telemetry.py results/token_telemetry.csv --input-price 0.30 --output-price 2.50
-```
-
-### Use as a library
-
-```python
-from smart_llm_client import SmartLLMClient
-from data_pipeline import load_and_serialize_smartrpa, tag_irrelevant_nodes
-from phase1_boundary_reasoning import identify_shared_boundaries
-from phase2_execution_mapping import generate_segmented_log
-
-MODEL = "gemini-3.5-flash"
-client = SmartLLMClient()                      # one client: one cache, one telemetry log
-
-constraints = [{"routine_name": "Approve Loan", "executions": 4}]
-
-df = load_and_serialize_smartrpa("log.csv", MODEL, client)          # Phase 0 / 0A / 0B
-df = tag_irrelevant_nodes(df, ["Approve Loan"], MODEL, client)      # Phase 0A-2
-shared = identify_shared_boundaries(df, MODEL, client)              # Phase 1
-generate_segmented_log(df, shared, constraints, MODEL, client=client)  # Phase 2
-```
+The wizard asks for the routine names and execution counts. Output lands in the **current working
+directory**: the colour-coded workbook and the routing audit JSON.
 
 ---
 
-## 7. Testing
+## 7. Reported results
+
+All figures below are from the thesis, on `caso_studio_trasferte_2exec.csv` with **Gemini 3.5 Flash**.
+
+**Correctness of a single production run** (section 7.2)
+
+| What | Result |
+| :-- | :-- |
+| Sharing topology | 8 shared actions, **all 22 subset memberships correct** — nothing spurious, nothing missed |
+| Routing | **98 / 98** business events in the correct execution; all 8 execution blocks match ground truth exactly |
+| Noise | **8 / 8** diverted; no business step diverted by mistake |
+| Trace assembly | each trace carries exactly the shared actions its subset entitles it to |
+
+**Phase 2 repeatability**, five runs, fresh cache each (section 7.3)
+
+| Run | 1 | 2 | 3 | 4 | 5 | Mean |
+| :-- | --: | --: | --: | --: | --: | --: |
+| Events correct | 95/98 | 96/98 | **98/98** | 94/98 | 95/98 | **97.6%** |
+
+94 of 98 events receive the identical assignment in every run. The four that move are **all**
+label-only clicks — and the split by evidence is the thesis's central finding:
+
+| Event kind | Correct in all five runs |
+| :-- | :-- |
+| Carries user-supplied data (typed, copied, pasted, downloaded) | **47 / 47 — 100%** |
+| Records only an interface label | 47 / 51 — 92.2% |
+
+Not one event carrying a payload was ever misplaced. The failures are confined to label-only
+events at points where two executions were both recently active, so neither payload nor
+continuity can decide.
+
+**Model dependence**, Phase 1 five times per model (section 7.4)
+
+| Model | Shared actions proposed per run | Clean 8-action topology |
+| :-- | :-- | --: |
+| Gemini 2.5 Flash | 12, 14, 8, 8, 10 | 2 / 5 |
+| **Gemini 3.5 Flash** | 8, 8, 8, 8, 8 | **5 / 5** |
+
+The weaker model over-proposes, promoting ordinary business steps to shared status — the more
+damaging failure direction, since a wrongly-shared action is duplicated into every trace of every
+routine attached to it. This is why 3.5 Flash is the default here.
+
+---
+
+## 8. Reproducing them
+
+Two harnesses reproduce the repeatability studies. Both hold the other phases fixed and use a
+fresh cache per run, so every call is a real inference.
+
+```bash
+# Phase 1 topology stability — thesis 7.4
+python src/phase1_repeat.py data/case_study/caso_studio_trasferte_2exec.csv 5 \
+  "Travel Authorization:2,Expense Reimbursement:2,Purchase Order Approval:2,Student Grant Disbursement:2"
+
+# Phase 2 routing stability against the committed reference — thesis 7.3
+python src/phase2_repeat.py data/case_study/caso_studio_trasferte_2exec.csv 5 \
+  "Travel Authorization:2,Expense Reimbursement:2,Purchase Order Approval:2,Student Grant Disbursement:2" \
+  --truth results/case_study/Final_Segmented_Master_Log_routing.json
+```
+
+**What the committed cache does and does not do.** `results/case_study/gemini_cache.json` holds
+the responses for Phases 0A, 0B, 0A-2 and 1, so those phases replay with no API call. It does
+**not** contain a Phase 2 entry: Phase 2 requires one live call. This is deliberate rather than an
+omission — section 7.3 establishes that Phase 2 is stochastic, so a cached routing would present
+one draw from a distribution as if it were the pipeline's deterministic answer.
+
+Expect a replay to reproduce the committed topology and to agree with the committed routing on
+most but not necessarily all events. A verification run performed while preparing this repository
+agreed on **97 of 98** events; the single difference was node 105, which Table 7.4 of the thesis
+already lists among the four unstable events (assigned to execution 1 in three runs of five, to
+execution 2 in the other two).
+
+---
+
+## 9. Output format
+
+**`Segmented_Logs`** — every original column, preceded by `routine_name` and `trace_id`. Each row
+is filled with a colour that is a pure function of (routine, execution), so figures are
+reproducible. Header frozen, autofilter on, widths fitted.
+
+**`Sharing_Topology`** — one row per shared action: `node_id`, the subset of routines that share
+it, how many routines that is, the model's `justification`, and the serialised `narrative`. This
+sheet is the A1' contribution made inspectable.
+
+**`Noise`** — events diverted by relevance tagging or declined by the router: the human review queue.
+
+**`*_routing.json`** — the full routing plan including the model's per-execution reasoning, plus
+the diverted node ids. The audit trail behind the workbook.
+
+---
+
+## 10. Engineering notes
+
+| Property | Implementation |
+| :-- | :-- |
+| **Deterministic shape** | Every call is constrained by a Gemini `responseSchema`; no free-text parsing. Markdown fences are stripped before `json.loads` as a safety net. |
+| **Cross-generation portability** | Gemini 2.5 takes an integer `thinkingBudget`; Gemini 3.x replaced it with a string `thinkingLevel` enum. The client detects the family from the model id and translates one caller-supplied budget into whichever field applies — which is what makes the like-for-like comparison of section 7.4 possible at all. The 2.5 path is byte-identical to before, so earlier caches stay valid. |
+| **Zero-cost repetition** | An MD5 fingerprint of model ⨯ system prompt ⨯ user prompt ⨯ schema ⨯ thinking budget keys an on-disk cache. Schema serialisation is order-independent; writes are atomic, so an interrupted run cannot corrupt the cache. |
+| **Resilience** | Bounded exponential back-off on 429 and 5xx, with a per-request timeout. Non-retryable statuses fail immediately with the status attached. |
+| **Observability** | Every live call appends a row to `token_telemetry.csv` via the `csv` module, so payloads containing commas or quotes cannot corrupt the file. |
+
+---
+
+## 11. Testing
 
 ```bash
 pytest
 ```
 
-**40 tests, no network access.** `SmartLLMClient` exposes an injectable `_transport`
-and `sleep`, so HTTP behaviour — retry on 429/5xx, exhaustion, malformed envelopes,
-blocked prompts, markdown-fenced JSON, cache hits, telemetry rows — is exercised
-deterministically against a fake transport. The phase tests drive the pipeline with a
-scripted stub client that returns queued responses and records the prompts it received,
+**40 tests, no network access.** `SmartLLMClient` exposes an injectable transport and sleep
+function, so retry on 429/5xx, exhaustion, malformed envelopes, blocked prompts, fenced JSON,
+cache hits and telemetry rows are all exercised deterministically against a fake transport. The
+phase tests drive the pipeline with a scripted stub client that records the prompts it received,
 so prompt construction itself is under test.
 
 ---
 
-## 8. Output format
+## 12. Cost and provenance
 
-### `Final_Segmented_Master_Log.xlsx`
+The client writes one telemetry row per call, so the cost of the reported work can be read rather
+than estimated. Thesis Table 7.9:
 
-**Sheet `Segmented_Logs`** — every original column, preceded by two new ones:
+| Model | Calls | Input tokens | Output tokens |
+| :-- | --: | --: | --: |
+| Gemini 2.5 Flash | 81 | 223,695 | 40,447 |
+| Gemini 3.5 Flash | 24 | 72,516 | 7,001 |
+| **Total** | **105** | **296,211** | **47,448** |
 
-| `routine_name` | `trace_id` | `timestamp` | `application` | `event_type` | … |
-| :-- | :-- | :-- | :-- | :-- | :-- |
-| Approve Loan | `Approve Loan_exec1` | … | Chrome | navigateTo | … |
+`results/case_study/token_telemetry.csv` is the raw log behind that table, and it reconciles
+exactly: its 81 rows for 2.5 Flash sum to 223,695 input and 40,447 output tokens, and the first 24
+rows for 3.5 Flash sum to 72,516 and 7,001. The file additionally contains 12 later 3.5 Flash
+calls, logged after the campaign closed on 20 July 2026, which are not part of Table 7.9.
 
-Each row is filled with a colour that is a **pure function of (routine, execution)**:
-a distinct base hue per routine, lightness varied across that routine's executions and
-clamped to a legible 0.35–0.85 band. The same input therefore always produces the same
-figure — reproducible screenshots for the thesis. The header row is frozen, autofilter
-is on, and column widths are fitted.
-
-**Sheet `Noise`** — present only when something was diverted: nodes tagged as unrelated
-by Phase 0A-2, plus any node the router declined to place. This sheet is the human
-review queue.
-
-### `Final_Segmented_Master_Log_routing.json`
-
-The full routing plan, including the model's per-execution `reasoning` string, plus the
-list of diverted node ids. This is the audit trail: it shows *why* each execution was
-assembled the way it was.
-
-<details>
-<summary><b>Reference run</b> — <code>data/03_stress/stress2_case3_4.csv</code></summary>
-
-Four routines × four executions, reconstructed from 69 interleaved cross-application
-events:
-
-| Routine | Executions | Nodes per execution |
-| :-- | --: | --: |
-| Reconcile Account | 4 | 3 |
-| Post Journal | 4 | 4 |
-| Issue Card | 4 | 4 |
-| Approve Loan | 4 | 5 |
-
-The exported workbook holds 144 rows across 16 traces — more than the 69 input events,
-because the globally shared boundaries identified in Phase 1 are re-attached to each of
-the 16 reconstructed traces so that every trace is independently replayable.
-
-</details>
+The whole campaign — production runs, both repeatability studies, and the cross-model
+comparison — cost well under one euro.
 
 ---
 
-## 9. Engineering notes
+## 13. Limitations
 
-The client (`src/smart_llm_client.py`) is a deliberately small REST wrapper rather than
-the vendor SDK. Four properties matter for a thesis pipeline:
+**Payload-less interleaving is the boundary of the method, not a defect of the implementation.**
+Assumption A3 does not promise that interleaving can always be untangled; it names distinguishing
+payload as the precondition for untangling anything. Section 7.3 finds the failures confined
+precisely to events that carry none — which is confirmation of the assumption rather than a
+shortfall against it. A run that were flawless on a payload-less log would be the result worth
+distrusting.
 
-| Property | Implementation |
-| :-- | :-- |
-| **Deterministic output** | Every call is constrained by a Gemini `responseSchema`; no free-text parsing. Markdown code fences are stripped before `json.loads` as a belt-and-braces measure. |
-| **Zero-cost repetition** | An MD5 fingerprint of `model ⨯ system prompt ⨯ user prompt ⨯ schema ⨯ thinking budget` keys an on-disk JSON cache. `sort_keys=True` makes the schema fingerprint order-independent, so semantically identical schemas share a cache entry. Writes are atomic (temp file + `os.replace`), so an interrupted run cannot corrupt the cache. |
-| **Resilience** | Bounded exponential back-off on 429 and 5xx (4 attempts, 2 → 4 → 8 → 16 s) with a per-request timeout. This became necessary after the free-tier quota reductions of December 2025. Non-retryable statuses fail immediately with the status attached. |
-| **Observability** | Every live call appends a row to `token_telemetry.csv` via the `csv` module, so payloads containing commas or quotes cannot corrupt the file. |
+**The Oracle is required.** The number of executions is not recoverable from an interleaved log in
+the general case: two consecutive reimbursements and one reimbursement retried after an error are
+indistinguishable at the UI level. Supplying that count turns an ill-posed problem into a
+well-posed one, and it is knowledge an analyst already has. The count is enforced *softly* — a
+mismatch is reported, not forced, so the discrepancy stays visible as evidence.
 
-Two further details worth noting for the thesis:
+**Five runs is a small sample.** It distinguishes a stable boundary from a wobbling one and shows
+that a single perfect run is not evidence of reliability. It is not enough to estimate a rate
+precisely, and the thesis does not treat a four-of-five figure as a probability.
 
-- **Thinking budget is opt-in.** It defaults to `0` — off. Phases 0A and 0B are simple
-  classification tasks and run with no internal thinking, which is faster and cheaper.
-  Phases 1 and 2 request a budget of 512 tokens. Because the budget is part of the cache
-  key, a reasoning-enabled call can never silently reuse a no-reasoning cached answer.
-- **`node_id` is a stable column, not the pandas index.** Every phase addresses nodes by
-  this identifier, so the LLM's view of the log and the reconstruction logic stay aligned
-  across the filtering and reordering that Phase 0 performs.
-
----
-
-## 10. Cost and observability
-
-```bash
-python src/analyze_telemetry.py results/token_telemetry.csv
-```
-
-```
-=================================================
- LLM TELEMETRY & OBSERVABILITY REPORT
-=================================================
-Total API Calls Made:   36
-Total Input Tokens:     118,925
-Total Output Tokens:    18,189
-Total Overall Tokens:   146,118
--------------------------------------------------
-Avg Input per Call:     3,303 tokens
-Avg Output per Call:    505 tokens
--------------------------------------------------
-Estimated Cost:         $0.08115 USD (@ $0.3/M in, $2.5/M out)
-=================================================
-```
-
-The full experimental campaign recorded in `results/token_telemetry.csv` cost **under
-ten cents** — cache hits are not billed and are not logged, so the figure reflects live
-calls only. That campaign ran on `gemini-2.5-flash`, and the default prices above are
-that model's list prices; pass `--input-price`/`--output-price` when reporting a run
-made with another model.
-
----
-
-## 11. Design decisions and limitations
-
-**Why a human Oracle at all?** Because the number of executions is genuinely
-unrecoverable from an interleaved log in the general case: two consecutive refunds and
-one refund retried after an error are indistinguishable at the UI level. Supplying that
-count turns an ill-posed problem into a well-posed one, and it is knowledge an analyst
-already has. The Oracle count is enforced *softly* — a mismatch is reported rather than
-forced, so the discrepancy stays visible as evidence instead of being hidden by the
-pipeline.
-
-**Payload-less interleaving is the boundary of the method.** When many events serialise
-to identical narratives — a long run of generic `click: Submit` with no distinguishing
-URL, text, or clipboard content — nothing in the log tells the model which execution a
-given click completes. Rather than fail silently, Phase 0 counts distinct narratives and
-prints an explicit warning when fewer than half the events are distinguishable, so the
-operator knows Phase 2 is operating at risk before reading its output.
-
-**Known constraints.**
-
-- The Excel exporter is tuned for logs of the size studied here; very large logs would
-  need a streaming writer.
-- Phases 0A-2, 1 and 2 each send the whole serialised log in one prompt, so the practical
-  input size is bounded by the model's context window.
-- Results depend on the model version. The pipeline defaults to `gemini-3.5-flash`,
-  while the reference artefacts under `results/` were produced with `gemini-2.5-flash`;
-  the committed cache pins the exact responses behind them. See
-  [Reproducibility](#12-reproducibility) for how to replay that run.
-
----
-
-## 12. Reproducibility
-
-The `results/` directory is a snapshot of a real run, committed on purpose.
-
-**Replaying the reference run without spending anything:** the pipeline looks for its
-cache in the current working directory, and the model name is part of every cache key.
-The committed responses were produced with `gemini-2.5-flash`, so the replay has to pin
-that model rather than the current default. Copy the cache across and set the model for
-the run —
-
-```bash
-cp results/gemini_cache.json .
-GEMINI_MODEL=gemini-2.5-flash python src/main.py data/03_stress/stress2_case3_4.csv
-```
-
-```powershell
-# PowerShell
-Copy-Item results\gemini_cache.json .
-$env:GEMINI_MODEL = "gemini-2.5-flash"
-python src/main.py data/03_stress/stress2_case3_4.csv
-```
-
-— and declare the same routines and counts in the wizard (Reconcile Account, Post
-Journal, Issue Card, Approve Loan; four executions each). Every request then resolves
-against the cache, the console prints `[CACHE HIT]` throughout, and no API call is made.
-
-Changing any prompt, schema, model, or input file changes the fingerprint and triggers a
-live call — which is the point: the cache can never mask a change.
+**Other constraints.** Phases 0A-2, 1 and 2 each send the whole serialised log in one prompt, so
+the practical input size is bounded by the context window; the Excel exporter is tuned for logs of
+the size studied here; and results depend on the model version, as section 7.4 documents directly.
 
 ---
 

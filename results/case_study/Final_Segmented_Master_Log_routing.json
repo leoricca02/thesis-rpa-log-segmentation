@@ -1,0 +1,240 @@
+{
+  "sharing_topology": [
+    {
+      "node_id": 0,
+      "shared_with": [
+        "Travel Authorization",
+        "Expense Reimbursement",
+        "Purchase Order Approval",
+        "Student Grant Disbursement"
+      ],
+      "justification": "Initial navigation to the authentication page, which is required by all routines to access the system."
+    },
+    {
+      "node_id": 1,
+      "shared_with": [
+        "Travel Authorization",
+        "Expense Reimbursement",
+        "Purchase Order Approval",
+        "Student Grant Disbursement"
+      ],
+      "justification": "User login via Sapienza credentials, establishing the authenticated session needed for all subsequent operations across all routines."
+    },
+    {
+      "node_id": 2,
+      "shared_with": [
+        "Travel Authorization",
+        "Expense Reimbursement",
+        "Purchase Order Approval"
+      ],
+      "justification": "Opening the Webmail client, which is required only by routines that process incoming emails and download attachments."
+    },
+    {
+      "node_id": 3,
+      "shared_with": [
+        "Travel Authorization",
+        "Expense Reimbursement",
+        "Purchase Order Approval"
+      ],
+      "justification": "Navigating to the Webmail inbox, which is accessed by Travel Authorization, Expense Reimbursement, and Purchase Order Approval to retrieve workflow emails."
+    },
+    {
+      "node_id": 4,
+      "shared_with": [
+        "Expense Reimbursement"
+      ],
+      "justification": "Accessing the U-GOV Accounting Portal, which is only used by the Expense Reimbursement routine to record accounting entries."
+    },
+    {
+      "node_id": 5,
+      "shared_with": [
+        "Expense Reimbursement"
+      ],
+      "justification": "Navigating to the accounting area, a prerequisite setup step required only for the Expense Reimbursement routine's accounting tasks."
+    },
+    {
+      "node_id": 6,
+      "shared_with": [
+        "Purchase Order Approval",
+        "Student Grant Disbursement"
+      ],
+      "justification": "Opening the Purchases and Suppliers Portal, which is used to access the order pages and recipient registry by both Purchase Order Approval and Student Grant Disbursement."
+    },
+    {
+      "node_id": 113,
+      "shared_with": [
+        "Travel Authorization",
+        "Expense Reimbursement",
+        "Purchase Order Approval",
+        "Student Grant Disbursement"
+      ],
+      "justification": "Final logout action to terminate the global browser session, affecting all running routines."
+    }
+  ],
+  "routing_plan": [
+    {
+      "routine_name": "Travel Authorization",
+      "execution_index": 1,
+      "assigned_node_indices": [
+        7,
+        15,
+        24,
+        33,
+        41,
+        50,
+        59,
+        68,
+        76,
+        85,
+        94,
+        100,
+        105,
+        109
+      ],
+      "reasoning": "This execution handles the Travel Authorization TA-2601, processing Mario Rossi's trip to Berlin for the BPM 2026 conference."
+    },
+    {
+      "routine_name": "Travel Authorization",
+      "execution_index": 2,
+      "assigned_node_indices": [
+        11,
+        20,
+        28,
+        37,
+        46,
+        55,
+        63,
+        72,
+        81,
+        89,
+        97,
+        103,
+        107
+      ],
+      "reasoning": "This execution handles Travel Authorization TA-2602 for Laura Conti's trip to Lisbon for the RPA 2026 workshop."
+    },
+    {
+      "routine_name": "Expense Reimbursement",
+      "execution_index": 1,
+      "assigned_node_indices": [
+        8,
+        16,
+        25,
+        34,
+        43,
+        51,
+        60,
+        69,
+        77,
+        86,
+        95,
+        101,
+        106,
+        110
+      ],
+      "reasoning": "This covers Expense Reimbursement RM-511, containing a flight (320 EUR), hotel (410 EUR), vitto (95 EUR), which falls within automatic approval thresholds."
+    },
+    {
+      "routine_name": "Expense Reimbursement",
+      "execution_index": 2,
+      "assigned_node_indices": [
+        12,
+        21,
+        29,
+        38,
+        47,
+        56,
+        64,
+        73,
+        82,
+        91,
+        98,
+        104,
+        108,
+        111,
+        112
+      ],
+      "reasoning": "This covers Expense Reimbursement RM-512, which requires manual approval from the director due to being over the threshold (flight 540 EUR, hotel 780 EUR)."
+    },
+    {
+      "routine_name": "Purchase Order Approval",
+      "execution_index": 1,
+      "assigned_node_indices": [
+        9,
+        17,
+        26,
+        35,
+        44,
+        52,
+        61,
+        70,
+        79,
+        87
+      ],
+      "reasoning": "This tracks Purchase Order PO-7401 for Dell Italia workstation procurement (2400 EUR)."
+    },
+    {
+      "routine_name": "Purchase Order Approval",
+      "execution_index": 2,
+      "assigned_node_indices": [
+        13,
+        22,
+        31,
+        39,
+        48,
+        57,
+        65,
+        74,
+        83,
+        92
+      ],
+      "reasoning": "This tracks Purchase Order PO-7402 for Epson Europe plotter procurement (3150 EUR)."
+    },
+    {
+      "routine_name": "Student Grant Disbursement",
+      "execution_index": 1,
+      "assigned_node_indices": [
+        10,
+        19,
+        27,
+        36,
+        45,
+        53,
+        62,
+        71,
+        80,
+        88,
+        96
+      ],
+      "reasoning": "This handles the student grant AS-331 for Giulia Bianchi (BNCGLI) for a doctoral fellowship."
+    },
+    {
+      "routine_name": "Student Grant Disbursement",
+      "execution_index": 2,
+      "assigned_node_indices": [
+        14,
+        23,
+        32,
+        40,
+        49,
+        58,
+        67,
+        75,
+        84,
+        93,
+        99
+      ],
+      "reasoning": "This handles the student grant AS-332 for Andrea Ferrara (FRRNDR) for an annual research grant."
+    }
+  ],
+  "noise_node_ids": [
+    18,
+    30,
+    42,
+    54,
+    66,
+    78,
+    90,
+    102
+  ]
+}

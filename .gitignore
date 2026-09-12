@@ -15,7 +15,7 @@ env/
 .ruff_cache/
 
 # Runtime artefacts written to the working directory by a live run.
-# Reference copies of these files are committed under results/.
+# The artefacts behind the thesis results are committed under results/.
 /gemini_cache.json
 /gemini_cache.json.tmp
 /token_telemetry.csv

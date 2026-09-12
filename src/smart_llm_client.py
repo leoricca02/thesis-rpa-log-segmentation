@@ -219,6 +219,32 @@ class SmartLLMClient:
             print(f"[!] Warning: could not write telemetry: {exc}")
 
     # ------------------------------------------------------------------ core
+    @staticmethod
+    def _thinking_config(model: str, thinking_budget: int) -> dict[str, Any]:
+        """Build the per-model thinking config.
+
+        Gemini 2.5 models use an integer ``thinkingBudget``; Gemini 3.x models
+        replaced it with a string ``thinkingLevel`` enum (minimal/low/medium/
+        high). We detect the family from the model id and translate the caller's
+        integer budget into the appropriate field so the same pipeline runs on
+        both generations unchanged. The 2.5 path is byte-identical to before,
+        so existing caches and results are preserved.
+        """
+        budget = max(0, thinking_budget)
+        # 3.x family (e.g. gemini-3-flash, gemini-3.5-flash): use thinkingLevel.
+        if "gemini-3" in model:
+            if budget == 0:
+                level = "minimal"
+            elif budget <= 512:
+                level = "low"
+            elif budget <= 1024:
+                level = "medium"
+            else:
+                level = "high"
+            return {"thinkingLevel": level}
+        # 2.5 family and anything else: keep the integer budget (unchanged).
+        return {"thinkingBudget": budget}
+
     def generate_content(
         self,
         model: str,
@@ -234,7 +260,7 @@ class SmartLLMClient:
         result.
 
         Args:
-            model: Gemini model identifier (e.g. 'gemini-3.5-flash').
+            model: Gemini model identifier (e.g. 'gemini-2.5-flash').
             system_prompt: System instruction text.
             user_prompt: User message text.
             schema: Gemini ``responseSchema`` constraining the output shape.
@@ -262,7 +288,7 @@ class SmartLLMClient:
         generation_config: dict[str, Any] = {
             "responseMimeType": "application/json",
             "responseSchema": schema,
-            "thinkingConfig": {"thinkingBudget": max(0, thinking_budget)},
+            "thinkingConfig": self._thinking_config(model, thinking_budget),
         }
         payload = {
             "contents": [{"parts": [{"text": user_prompt}]}],

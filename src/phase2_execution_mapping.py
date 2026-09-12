@@ -1,10 +1,23 @@
-"""Phase 2: route unshared nodes into executions and reassemble traces.
+"""Phase 2 (Seventh Approach): route, validate as a COVER, reassemble, export.
 
-Takes the nodes left after Phase 1 removed the globally shared boundaries and
-asks the LLM to distribute them into the exact execution buckets the human
-Oracle declared. The routing is then validated (hard coverage check + soft
-Oracle/semantic checks), the shared boundaries are re-attached to every trace,
-and a colour-coded Excel workbook plus a JSON audit trail are written.
+The Sixth Approach validated a PARTITION: every node assigned to exactly one
+execution, then one global boundary set was prepended/appended to every trace.
+
+Under H1' (Subset Sharing) the unit of validation becomes a COVER:
+  HARD INVARIANTS (violation -> abort, no output):
+    P1. Every NON-shared node is assigned to exactly one execution block
+        (still a partition over the routable nodes).
+    P2. Every block's routine name is one of the declared routine names
+        (an invented name would silently detach traces from the topology).
+    P3. After reassembly, every node of the log appears in at least one
+        trace, and a shared node appears in exactly the traces whose routine
+        is in its subset. Nothing is ever dropped or smuggled.
+  SOFT CHECKS (warning, output still produced):
+    S1. The number of executions per routine matches the Oracle.
+    S2. Every routine receives at least one shared action (a routine with no
+        setup at all is suspicious and worth operator review).
+    S3. Duplicate (routine, execution_index) pairs are de-collided with a
+        suffix and reported.
 """
 
 from __future__ import annotations
@@ -16,6 +29,8 @@ from typing import Any
 import pandas as pd
 
 from smart_llm_client import SmartLLMClient
+
+_THINKING_BUDGET = 512
 
 # Distinct base hues per routine family; executions vary lightness within hue.
 _BASE_COLORS = (
@@ -36,7 +51,7 @@ def adjust_color_lightness(hex_color: str, amount: float = 1.0) -> str:
     Args:
         hex_color: A '#RRGGBB' string.
         amount: Multiplier on the lightness channel; clamped so output stays in
-            a legible mid band (0.35–0.85) rather than washing out to white.
+            a legible mid band (0.35-0.85) rather than washing out to white.
 
     Returns:
         A '#RRGGBB' string (upper-case).
@@ -52,14 +67,10 @@ def adjust_color_lightness(hex_color: str, amount: float = 1.0) -> str:
 
 
 def _trace_color(routine_index: int, exec_index: int, exec_total: int) -> str:
-    """Deterministically map (routine, execution) to a stable shade.
-
-    Same input always yields the same colour, so figures are reproducible.
-    """
+    """Deterministically map (routine, execution) to a stable shade."""
     base = _BASE_COLORS[routine_index % len(_BASE_COLORS)]
     if exec_total <= 1:
         return adjust_color_lightness(base, 1.0)
-    # Spread executions across a 0.7–1.25 lightness band.
     span = 0.7 + 0.55 * (exec_index / max(1, exec_total - 1))
     return adjust_color_lightness(base, span)
 
@@ -76,9 +87,9 @@ def _build_routing_prompt(routine_constraints: list[dict[str, Any]]) -> str:
 
     return f"""\
 You are an expert RPA process-mining engine that untangles interleaved UI
-events into distinct robot executions. The globally shared actions (login,
-logout, etc.) have already been removed; you only route the remaining
-routine-specific nodes.
+events into distinct robot executions. The shared actions (authentication,
+module openers, teardown, etc.) have already been removed; you only route the
+remaining routine-specific nodes.
 
 {blocks_instruction}
 
@@ -88,11 +99,11 @@ CRITICAL RULES
 3. Produce exactly the number of executions requested per routine — no more,
    no fewer.
 4. Use the routine NAME as a semantic anchor: decide which routine a node
-   belongs to from its meaning (URL section, button text, typed/pasted
-   payload), then which execution it belongs to from payload continuity and
-   chronological flow.
-5. For payload-less actions (e.g. a generic 'Submit' click), attach them to
-   the execution whose preceding payload they logically complete.
+   belongs to from its meaning (the area/section it touches, button text,
+   typed/pasted payload), then which execution it belongs to from payload
+   continuity and chronological flow.
+5. For payload-less actions, attach them to the execution whose preceding
+   payload they logically complete.
 
 OUTPUT
 For each execution return an object with: routine_name (exactly one of the
@@ -123,14 +134,11 @@ _SCHEMA: dict[str, Any] = {
 }
 
 
-def _validate_coverage(
+# ----------------------------------------------------------------- validation
+def _validate_partition(
     routing_plan: list[dict[str, Any]], expected_ids: set[int]
 ) -> tuple[bool, set[int], set[int]]:
-    """Hard check: every expected node used exactly once.
-
-    Returns:
-        (ok, missing, duplicates).
-    """
+    """P1: every routable node used exactly once. Returns (ok, missing, dupes)."""
     seen: set[int] = set()
     duplicates: set[int] = set()
     for block in routing_plan:
@@ -146,13 +154,34 @@ def _validate_coverage(
     return (not missing and not duplicates), missing, duplicates
 
 
-def _check_oracle_counts(
-    routing_plan: list[dict[str, Any]], routine_constraints: list[dict[str, Any]]
-) -> list[str]:
-    """Soft check: did the LLM produce the requested executions per routine?"""
-    produced: dict[str, int] = {}
+def _canonical_block_names(
+    routing_plan: list[dict[str, Any]], declared: dict[str, str]
+) -> list[str] | None:
+    """P2: map each block's routine name onto a declared name (or fail).
+
+    Returns the list of canonical names (parallel to routing_plan), or None if
+    any block names a routine the Oracle never declared.
+    """
+    canonical: list[str] = []
     for block in routing_plan:
-        name = str(block.get("routine_name", "")).strip()
+        key = str(block.get("routine_name", "")).strip().lower()
+        if key not in declared:
+            print(
+                f"[!] CRITICAL: Phase 2 produced an undeclared routine name: "
+                f"{block.get('routine_name')!r}. Declared: "
+                f"{sorted(declared.values())}."
+            )
+            return None
+        canonical.append(declared[key])
+    return canonical
+
+
+def _check_oracle_counts(
+    block_names: list[str], routine_constraints: list[dict[str, Any]]
+) -> list[str]:
+    """S1: did the LLM produce the requested executions per routine?"""
+    produced: dict[str, int] = {}
+    for name in block_names:
         produced[name] = produced.get(name, 0) + 1
     warnings: list[str] = []
     for r in routine_constraints:
@@ -163,25 +192,44 @@ def _check_oracle_counts(
             warnings.append(
                 f"Routine '{name}': expected {want} execution(s), got {got}."
             )
-    extra = set(produced) - {str(r["routine_name"]).strip() for r in routine_constraints}
-    for name in sorted(extra):
-        warnings.append(f"Unexpected routine name from LLM: '{name}'.")
     return warnings
 
 
+def _check_topology_reach(
+    sharing_topology: list[dict[str, Any]],
+    routine_constraints: list[dict[str, Any]],
+) -> list[str]:
+    """S2: every declared routine should receive at least one shared action."""
+    covered: set[str] = set()
+    for action in sharing_topology:
+        for name in action.get("shared_with", []):
+            covered.add(str(name).strip())
+    warnings: list[str] = []
+    for r in routine_constraints:
+        name = str(r["routine_name"]).strip()
+        if name not in covered:
+            warnings.append(
+                f"Routine '{name}' received NO shared actions; verify the "
+                "inferred topology (it may be correct, but it is unusual)."
+            )
+    return warnings
+
+
+# ------------------------------------------------------------------- pipeline
 def generate_segmented_log(
     df: pd.DataFrame,
-    shared_indices: list[int],
+    sharing_topology: list[dict[str, Any]],
     routine_constraints: list[dict[str, Any]],
     model_name: str,
     output_file: str = "Final_Segmented_Master_Log.xlsx",
     client: SmartLLMClient | None = None,
 ) -> bool:
-    """Route unshared nodes, validate, reassemble, and export.
+    """Route unshared nodes, validate the cover, reassemble, and export.
 
     Args:
         df: DataFrame with 'node_id' and 'llm_narrative' columns.
-        shared_indices: Globally shared node ids from Phase 1.
+        sharing_topology: Phase 1 output — list of dicts with 'node_id',
+            'shared_with' (list of declared routine names), 'justification'.
         routine_constraints: Oracle constraints, each a dict with
             'routine_name' and 'executions'.
         model_name: Gemini model identifier.
@@ -190,42 +238,50 @@ def generate_segmented_log(
 
     Returns:
         True on success (workbook written). False on a hard failure
-        (coverage violation or API/parse/export error). Soft issues
-        (Oracle-count mismatch) print warnings but still produce output.
+        (cover violation, undeclared routine name, API/parse/export error).
+        Soft issues print warnings but still produce output.
     """
-    print("\n--- Phase 2: LLM Execution Mapping ---")
+    print("\n--- Phase 2: LLM Execution Mapping (subset-aware) ---")
     client = client or SmartLLMClient()
 
     df = df.set_index("node_id", drop=False)
-    shared_set = set(int(i) for i in shared_indices)
+    all_ids = set(int(i) for i in df["node_id"].tolist())
+    shared_ids = {int(a["node_id"]) for a in sharing_topology}
+    subset_by_id: dict[int, list[str]] = {
+        int(a["node_id"]): [str(n).strip() for n in a["shared_with"]]
+        for a in sharing_topology
+    }
+    declared = {
+        str(r["routine_name"]).strip().lower(): str(r["routine_name"]).strip()
+        for r in routine_constraints
+    }
 
     # Relevance-aware noise bucket (Phase 0A-2). Nodes tagged as unrelated to
-    # the declared routines are NEVER sent to the router and are NOT expected in
-    # coverage; they are diverted to a reviewable 'Noise' sheet. If the column
-    # is absent (older callers) or all-False (clean log), this is a no-op and
-    # behaviour is identical to before.
+    # the declared routines are withheld from routing and the cover check, and
+    # diverted to a reviewable 'Noise' sheet. No-op on clean logs.
     if "is_probable_noise" in df.columns:
         noise_mask = df["is_probable_noise"].fillna(False).astype(bool)
     else:
         noise_mask = pd.Series(False, index=df.index)
     noise_ids = set(int(i) for i in df.loc[noise_mask, "node_id"].tolist())
-    # A shared boundary node is never noise, even if mis-tagged.
-    noise_ids -= shared_set
+    noise_ids -= shared_ids  # a shared boundary node is never noise
     if noise_ids:
         print(
             f"[*] {len(noise_ids)} pre-tagged noise node(s) diverted to the "
             "Noise sheet (not routed)."
         )
 
-    df_unshared = df[
-        ~df["node_id"].isin(shared_set) & ~df["node_id"].isin(noise_ids)
-    ]
-    expected_ids = set(int(i) for i in df_unshared["node_id"].tolist())
+    df_routable = df[~df["node_id"].isin(shared_ids) & ~df["node_id"].isin(noise_ids)]
+    expected_ids = set(int(i) for i in df_routable["node_id"].tolist())
+    print(
+        f"[*] {len(shared_ids)} shared node(s) withheld; "
+        f"{len(expected_ids)} routable node(s) sent to the LLM."
+    )
 
     log_sequence = "".join(
         f"Node {int(nid)}: {nar}\n"
         for nid, nar in zip(
-            df_unshared["node_id"], df_unshared["llm_narrative"].astype(str)
+            df_routable["node_id"], df_routable["llm_narrative"].astype(str)
         )
     )
     system_prompt = _build_routing_prompt(routine_constraints)
@@ -236,7 +292,11 @@ def generate_segmented_log(
 
     try:
         routing_plan = client.generate_content(
-            model_name, system_prompt, user_prompt, _SCHEMA, thinking_budget=512
+            model_name,
+            system_prompt,
+            user_prompt,
+            _SCHEMA,
+            thinking_budget=_THINKING_BUDGET,
         )
     except Exception as exc:  # noqa: BLE001
         print(f"[!] CRITICAL: Phase 2 API call failed.\n    Details: {exc}")
@@ -247,7 +307,8 @@ def generate_segmented_log(
         return False
     print(f"[*] LLM produced {len(routing_plan)} execution block(s).")
 
-    ok, missing, duplicates = _validate_coverage(routing_plan, expected_ids)
+    # ---- P1: partition over routable nodes ----
+    ok, missing, duplicates = _validate_partition(routing_plan, expected_ids)
     # Duplicates are always fatal: a node in two executions is real corruption.
     if duplicates:
         print(
@@ -256,12 +317,8 @@ def generate_segmented_log(
         )
         print("[!] Halting Phase 2 to prevent silent data corruption.")
         return False
-
-    # Missing nodes are nodes the router declined to place. Rather than abort,
-    # divert them to the reviewable Noise sheet (alongside any pre-tagged noise)
-    # and warn loudly. Nothing is lost: every missing node is preserved in the
-    # Noise sheet for human inspection. This is the noise-bucket relaxation —
-    # on a clean log 'missing' is empty and behaviour is unchanged.
+    # Missing nodes are diverted to the Noise sheet (soft) rather than aborting.
+    # Nothing is lost: every missing node is preserved for human review.
     if missing:
         print(
             f"[SOFT WARNING] {len(missing)} node(s) were not routed by the LLM "
@@ -269,83 +326,131 @@ def generate_segmented_log(
         )
         noise_ids |= set(int(i) for i in missing)
 
-    count_warnings = _check_oracle_counts(routing_plan, routine_constraints)
-    for warning in count_warnings:
+    # ---- P2: block names must be declared ----
+    block_names = _canonical_block_names(routing_plan, declared)
+    if block_names is None:
+        print("[!] Halting Phase 2: traces cannot be tied to the topology.")
+        return False
+
+    # ---- S1 / S2 soft checks ----
+    for warning in _check_oracle_counts(block_names, routine_constraints):
+        print(f"[SOFT WARNING] {warning}")
+    for warning in _check_topology_reach(sharing_topology, routine_constraints):
         print(f"[SOFT WARNING] {warning}")
 
-    final_master_df, color_map = _reassemble_traces(
-        df, routing_plan, sorted(shared_set)
+    final_master_df = _reassemble_traces(
+        df, routing_plan, block_names, subset_by_id
     )
 
+    # ---- P3: cover check on the reassembled output (noise excluded) ----
+    covered = set(int(i) for i in final_master_df["node_id"].tolist())
+    uncovered = all_ids - covered - noise_ids
+    if uncovered:
+        print(
+            f"[!] CRITICAL: {len(uncovered)} node(s) appear in NO trace after "
+            f"reassembly: {sorted(uncovered)}. A shared node's subset may "
+            "reference a routine that produced no executions."
+        )
+        print("[!] Halting Phase 2 to prevent silent data loss.")
+        return False
+
     noise_df = df[df["node_id"].isin(noise_ids)].copy() if noise_ids else None
-    _export_workbook(final_master_df, output_file, noise_df)
-    _write_audit_trail(routing_plan, output_file, sorted(noise_ids))
+    _export_workbook(final_master_df, sharing_topology, df, output_file, noise_df)
+    _write_audit_trail(sharing_topology, routing_plan, output_file, sorted(noise_ids))
     print(f"[SUCCESS] Segmented log written to: {output_file}")
     if noise_ids:
-        print(
-            f"[*] {len(noise_ids)} node(s) placed in the Noise sheet for review."
-        )
+        print(f"[*] {len(noise_ids)} node(s) placed in the Noise sheet for review.")
     return True
 
 
 def _reassemble_traces(
     df: pd.DataFrame,
     routing_plan: list[dict[str, Any]],
-    shared_sorted: list[int],
-) -> tuple[pd.DataFrame, dict[str, str]]:
-    """Attach shared boundaries to each routed trace and stack into one frame."""
+    block_names: list[str],
+    subset_by_id: dict[int, list[str]],
+) -> pd.DataFrame:
+    """Attach each shared node to exactly the traces in its subset."""
     routine_index: dict[str, int] = {}
     exec_totals: dict[str, int] = {}
-    for block in routing_plan:
-        name = str(block.get("routine_name", "Routine")).strip() or "Routine"
+    for name in block_names:
         exec_totals[name] = exec_totals.get(name, 0) + 1
 
+    seen_trace_ids: set[str] = set()
     records: list[pd.DataFrame] = []
-    color_map: dict[str, str] = {}
-    for block in routing_plan:
-        name = str(block.get("routine_name", "Routine")).strip() or "Routine"
+    for block, name in zip(routing_plan, block_names):
         if name not in routine_index:
             routine_index[name] = len(routine_index)
-        exec_idx = int(block.get("execution_index", len(color_map) + 1))
-        trace_id = f"{name}_exec{exec_idx}"
+        try:
+            exec_idx = int(block.get("execution_index", 0))
+        except (TypeError, ValueError):
+            exec_idx = 0
+        if exec_idx <= 0:
+            exec_idx = sum(1 for n in block_names[: len(records)] if n == name) + 1
 
-        specific = [int(i) for i in block.get("assigned_node_indices", [])]
-        ordered = sorted(dict.fromkeys(shared_sorted + specific))
+        trace_id = f"{name}_exec{exec_idx}"
+        while trace_id in seen_trace_ids:  # S3: de-collide duplicates
+            print(f"[SOFT WARNING] Duplicate trace id '{trace_id}'; suffixing.")
+            trace_id += "_b"
+        seen_trace_ids.add(trace_id)
+
+        specific = []
+        for i in block.get("assigned_node_indices", []):
+            try:
+                specific.append(int(i))
+            except (TypeError, ValueError):
+                continue
+        shared_for_trace = [
+            nid for nid, subset in subset_by_id.items() if name in subset
+        ]
+        ordered = sorted(dict.fromkeys(shared_for_trace + specific))
+
         trace_df = df.loc[ordered].copy()
         trace_df.insert(0, "trace_id", trace_id)
         trace_df.insert(0, "routine_name", name)
-
-        color = _trace_color(routine_index[name], exec_idx - 1, exec_totals[name])
-        color_map[trace_id] = color
-        trace_df["trace_color"] = color
+        trace_df["trace_color"] = _trace_color(
+            routine_index[name], exec_idx - 1, exec_totals[name]
+        )
         records.append(trace_df)
 
-    master = pd.concat(records, ignore_index=True)
-    master.drop(
-        columns=["llm_narrative", "node_id", "is_probable_noise"],
-        inplace=True,
-        errors="ignore",
-    )
-    return master, color_map
+    return pd.concat(records, ignore_index=True)
 
 
 def _export_workbook(
     master: pd.DataFrame,
+    sharing_topology: list[dict[str, Any]],
+    df_indexed: pd.DataFrame,
     output_file: str,
     noise_df: pd.DataFrame | None = None,
 ) -> None:
-    """Write the styled, colour-coded workbook with a frozen header row.
-
-    If ``noise_df`` is provided and non-empty, a second 'Noise' sheet lists the
-    nodes that were diverted from routing (pre-tagged as unrelated, or declined
-    by the router) so a human can review them. None is ever silently lost.
-    """
+    """Write the styled workbook: segmented log + sharing-topology (+ noise)."""
     print(f"[*] Exporting formatted workbook to {output_file} ...")
-    data = master.drop(columns=["trace_color"])
+    data = master.drop(
+        columns=["trace_color", "llm_narrative", "node_id", "is_probable_noise"],
+        errors="ignore",
+    )
+
+    topo_rows = []
+    for action in sharing_topology:
+        nid = int(action["node_id"])
+        topo_rows.append(
+            {
+                "node_id": nid,
+                "shared_with": ", ".join(action["shared_with"]),
+                "n_routines": len(action["shared_with"]),
+                "justification": str(action.get("justification", "")),
+                "narrative": str(df_indexed.loc[nid, "llm_narrative"]),
+            }
+        )
+    topo_df = pd.DataFrame(
+        topo_rows,
+        columns=["node_id", "shared_with", "n_routines", "justification",
+                 "narrative"],
+    )
+
     with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
         data.to_excel(writer, index=False, sheet_name="Segmented_Logs")
+        topo_df.to_excel(writer, index=False, sheet_name="Sharing_Topology")
         workbook = writer.book
-        worksheet = writer.sheets["Segmented_Logs"]
 
         header_fmt = workbook.add_format(
             {
@@ -358,26 +463,36 @@ def _export_workbook(
                 "valign": "vcenter",
             }
         )
+
+        ws_main = writer.sheets["Segmented_Logs"]
         for col_num, name in enumerate(data.columns):
-            worksheet.write(0, col_num, name, header_fmt)
+            ws_main.write(0, col_num, name, header_fmt)
             max_len = data[name].astype(str).str.len().max()
             if pd.isna(max_len):
                 max_len = 12
-            width = min(48, max(12, int(max_len)))
-            worksheet.set_column(col_num, col_num, width)
-
+            ws_main.set_column(col_num, col_num, min(48, max(12, int(max_len))))
         for row_num, color_hex in enumerate(master["trace_color"]):
             row_fmt = workbook.add_format(
                 {"bg_color": color_hex, "font_name": "Arial", "border": 1}
             )
-            worksheet.set_row(row_num + 1, cell_format=row_fmt)
+            ws_main.set_row(row_num + 1, cell_format=row_fmt)
+        ws_main.freeze_panes(1, 0)
+        ws_main.autofilter(0, 0, len(data), len(data.columns) - 1)
 
-        worksheet.freeze_panes(1, 0)
-        worksheet.autofilter(0, 0, len(data), len(data.columns) - 1)
+        ws_topo = writer.sheets["Sharing_Topology"]
+        for col_num, name in enumerate(topo_df.columns):
+            ws_topo.write(0, col_num, name, header_fmt)
+            max_len = topo_df[name].astype(str).str.len().max()
+            if pd.isna(max_len):
+                max_len = 12
+            ws_topo.set_column(col_num, col_num, min(70, max(12, int(max_len))))
+        ws_topo.freeze_panes(1, 0)
 
         if noise_df is not None and not noise_df.empty:
             noise_out = noise_df.drop(
-                columns=["trace_color", "is_probable_noise"], errors="ignore"
+                columns=["trace_color", "llm_narrative", "node_id",
+                         "is_probable_noise"],
+                errors="ignore",
             )
             noise_out.to_excel(writer, index=False, sheet_name="Noise")
             ws_noise = writer.sheets["Noise"]
@@ -391,20 +506,22 @@ def _export_workbook(
 
 
 def _write_audit_trail(
+    sharing_topology: list[dict[str, Any]],
     routing_plan: list[dict[str, Any]],
     output_file: str,
     noise_ids: list[int] | None = None,
 ) -> None:
-    """Persist the routing plan (with reasoning) and noise ids next to the xlsx."""
+    """Persist the topology and routing plan (with reasoning) as JSON."""
     audit_path = output_file.rsplit(".", 1)[0] + "_routing.json"
-    payload: dict[str, Any] | list[Any]
+    payload: dict[str, Any] = {
+        "sharing_topology": sharing_topology,
+        "routing_plan": routing_plan,
+    }
     if noise_ids:
-        payload = {"routing_plan": routing_plan, "noise_node_ids": noise_ids}
-    else:
-        payload = routing_plan  # unchanged shape when there is no noise
+        payload["noise_node_ids"] = noise_ids
     try:
         with open(audit_path, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, ensure_ascii=False)
-        print(f"[*] Routing audit trail saved to {audit_path}")
+        print(f"[*] Audit trail (topology + routing) saved to {audit_path}")
     except OSError as exc:
         print(f"[!] Warning: could not write audit trail: {exc}")
