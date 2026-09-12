@@ -1,8 +1,6 @@
 <div align="center">
 
-# Segmentation of User Interface Logs for Robotic
-Process Automation with Shared-Action Routines:
-A Semi-Supervised LLM-Based Approach
+# Segmentation of User Interface Logs for Robotic Process Automation with Shared-Action Routines: A Semi-Supervised LLM-Based Approach
 
 **A three-stage, semi-supervised pipeline that reconstructs discrete RPA executions
 from a single, noisy, interleaved user-interaction log.**
