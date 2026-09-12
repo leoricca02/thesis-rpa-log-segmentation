@@ -6,7 +6,7 @@
 from a single, noisy, interleaved user-interaction log.**
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Gemini](https://img.shields.io/badge/LLM-Gemini%202.5%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
+[![Gemini](https://img.shields.io/badge/LLM-Gemini%203.5%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
 [![Tests](https://img.shields.io/badge/tests-40%20passing-2CA02C)](#7-testing)
 [![Benchmark](https://img.shields.io/badge/benchmark-RCIS--2021%20Case%203.x-8C564B)](#5-datasets)
 
@@ -206,7 +206,7 @@ thesis_project/
 │   ├── data_pipeline.py              # Ingestion, Phase 0A / 0B / 0A-2, serialisation
 │   ├── phase1_boundary_reasoning.py  # Phase 1 — globally shared boundaries
 │   ├── phase2_execution_mapping.py   # Phase 2 — routing, validation, XLSX + JSON export
-│   ├── smart_llm_client.py           # Gemini REST client: cache, telemetry, retry/back-off
+│   ├── smart_llm_client.py           #  REST client: cache, telemetry, retry/back-off
 │   └── analyze_telemetry.py          # Token/cost observability report
 │
 ├── tests/                            # 40 pytest cases — fully offline
@@ -222,7 +222,7 @@ thesis_project/
 ├── results/                          # Reference artefacts from a real run (committed)
 │   ├── Final_Segmented_Master_Log.xlsx
 │   ├── Final_Segmented_Master_Log_routing.json
-│   ├── gemini_cache.json             # Cached LLM responses — enables a zero-cost replay
+│   ├── _cache.json             # Cached LLM responses — enables a zero-cost replay
 │   ├── token_telemetry.csv
 │   └── token_telemetry_old.csv
 │
@@ -302,12 +302,12 @@ cp .env.example .env      # Windows: copy .env.example .env
 Then open `.env` and paste your key from [Google AI Studio](https://aistudio.google.com/apikey):
 
 ```ini
-GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-2.5-flash
+_API_KEY=your_key_here
+GEMINI_MODEL=gemini-3.5-flash
 ```
 
 > `.env` is git-ignored. The model is environment-driven, so switching to
-> `gemini-2.5-flash-lite` for a high-request-per-day stress run needs no code change.
+> `gemini-3.5-flash-lite` for a high-request-per-day stress run needs no code change.
 
 ### Run
 
@@ -346,7 +346,7 @@ from data_pipeline import load_and_serialize_smartrpa, tag_irrelevant_nodes
 from phase1_boundary_reasoning import identify_shared_boundaries
 from phase2_execution_mapping import generate_segmented_log
 
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-3.5-flash"
 client = SmartLLMClient()                      # one client: one cache, one telemetry log
 
 constraints = [{"routine_name": "Approve Loan", "executions": 4}]
@@ -496,7 +496,7 @@ operator knows Phase 2 is operating at risk before reading its output.
   need a streaming writer.
 - Phases 0A-2, 1 and 2 each send the whole serialised log in one prompt, so the practical
   input size is bounded by the model's context window.
-- Results depend on the model version. `gemini-2.5-flash` is the default; the committed
+- Results depend on the model version. `gemini-3.5-flash` is the default; the committed
   cache pins the exact responses behind the reported results.
 
 ---
