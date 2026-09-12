@@ -14,8 +14,8 @@ from a single, noisy, interleaved user-interaction log.**
 
 ---
 
-> **Thesis project** — *Bachelor/Master thesis, <!-- TODO: degree programme -->*
-> Author: <!-- TODO: your name --> · Supervisor: <!-- TODO: supervisor --> · <!-- TODO: university, year -->
+> **Thesis project** — *Master thesis, Engineering in Computer Science*
+> Author: Leonardo Ricca · Supervisor: Andrea Marrella, Andrea Agostinelli · Sapienza Università Di Roma, 2026.
 
 ---
 
