@@ -1,0 +1,3017 @@
+{
+    "3ffa9ff6be8f8a72b7aa3c83de0556ac": [
+        "mouseMove",
+        "mouseHover",
+        "scroll",
+        "windowFocus",
+        "resizeWindow"
+    ],
+    "65eca060855c7e4e1f332e663ef05c53": [
+        "timestamp",
+        "user",
+        "id",
+        "screenshot",
+        "window_size"
+    ],
+    "6819c526ad55fa2984a6aef40d22f235": {
+        "reasoning": "Node 0 (navigateTo to /auth) is a global prerequisite because it's the authentication step, which every routine depends on before any specific work can begin. Nodes 1-8 are routine-specific actions: 'Process Refund' and 'Ticket Update' are distinct business routines, and typing 'Order123', 'Resolved', 'Order456', or 'Pending' clearly indicates specific payload for those routines. Node 9 (navigateTo to /logout) is a global post-requisite because it closes the entire session after all routines are completed.",
+        "shared_indices": [
+            0,
+            9
+        ]
+    },
+    "ef659632a72eff814391e72e3db18d1c": [
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                1,
+                2
+            ],
+            "reasoning": "Node 1 initiates a refund process, and Node 2 provides the specific order ID 'Order123' for that process."
+        },
+        {
+            "routine_name": "Ticket Update",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                3,
+                4
+            ],
+            "reasoning": "Node 3 initiates a ticket update, and Node 4 provides the status 'Resolved' for that update."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                5,
+                6
+            ],
+            "reasoning": "Node 5 initiates a second distinct refund process, and Node 6 provides the order ID 'Order456' for it."
+        },
+        {
+            "routine_name": "Ticket Update",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                7,
+                8
+            ],
+            "reasoning": "Node 7 initiates a second distinct ticket update, and Node 8 provides the status 'Pending' for it."
+        }
+    ],
+    "e1c0fb8c467b7b67c4dbf0c9b77eef73": [],
+    "15d896815cd7a005bc467740964f971f": [
+        "timestamp",
+        "user",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "workbook",
+        "current_worksheet",
+        "worksheets",
+        "sheets",
+        "cell_content",
+        "cell_range",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "hotkey",
+        "id",
+        "title",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_name",
+        "tag_title",
+        "tag_value",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "e8bda06291145f15373f16b6849ebe54": {
+        "reasoning": "Node 0 (open browser to ERP base URL), Node 1 (navigate to /auth), and Node 2 (login button click) are classic shared setup steps that every subsequent routine depends on for application access and authentication. Nodes 3 through 47 are all specific actions within various business routines (billing, support, finance, HR, warehouse) involving specific data (refund IDs, ticket IDs, invoice IDs, employee IDs, SKU IDs), making them routine-specific rather than globally shared. Node 48 (click 'Clear Session') and Node 49 (navigateTo /logout) are clear global teardown steps, ensuring the session is properly closed regardless of which routines were executed.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            48,
+            49
+        ]
+    },
+    "935a3bceda1c58e86c5b44389d469ac9": [
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                3,
+                4,
+                5
+            ],
+            "reasoning": "This sequence initiates a refund, pastes 'REF-801', and confirms it, forming a complete execution for the first refund."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                6,
+                7,
+                8
+            ],
+            "reasoning": "This sequence initiates another refund, pastes 'REF-802', and confirms it, forming a complete execution for the second refund."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                9,
+                10,
+                11
+            ],
+            "reasoning": "This sequence initiates a third refund, pastes 'REF-803', and confirms it, completing the 'Process Refund' routine."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                12,
+                13,
+                14
+            ],
+            "reasoning": "This sequence navigates to 'TKT-901', resolves it, and then closes the ticket, completing one execution."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                15,
+                16,
+                17
+            ],
+            "reasoning": "This sequence navigates to 'TKT-902', resolves it, and then closes the ticket, completing a second execution."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                18,
+                19,
+                20
+            ],
+            "reasoning": "This sequence navigates to 'TKT-903', resolves it, and then closes the ticket, completing the 'Close Ticket' routine."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                21,
+                22,
+                23
+            ],
+            "reasoning": "This sequence opens an invoice, pastes 'INV-501', and approves it, completing one execution for invoice approval."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                24,
+                25,
+                26
+            ],
+            "reasoning": "This sequence opens an invoice, pastes 'INV-502', and approves it, completing a second execution for invoice approval."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                27,
+                28,
+                29
+            ],
+            "reasoning": "This sequence opens an invoice, pastes 'INV-503', and approves it, completing the 'Approve Invoice' routine."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                30,
+                31,
+                32
+            ],
+            "reasoning": "This sequence initiates adding an employee, pastes 'EMP-301', and saves their profile, completing one execution."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                33,
+                34,
+                35
+            ],
+            "reasoning": "This sequence initiates adding an employee, pastes 'EMP-302', and saves their profile, completing a second execution."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                36,
+                37,
+                38
+            ],
+            "reasoning": "This sequence initiates adding an employee, pastes 'EMP-303', and saves their profile, completing the 'Onboard Employee' routine."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                39,
+                40,
+                41
+            ],
+            "reasoning": "This sequence selects stock 'SKU-701', pastes its ID (likely for quantity or detail input), and commits the count, completing one execution."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                42,
+                43,
+                44
+            ],
+            "reasoning": "This sequence selects stock 'SKU-702', pastes its ID, and commits the count, completing a second execution."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                45,
+                46,
+                47
+            ],
+            "reasoning": "This sequence selects stock 'SKU-703', pastes its ID, and commits the count, completing the 'Update Inventory' routine."
+        }
+    ],
+    "767b2992b5656684ceb7e1d8ffe45736": [
+        "timestamp",
+        "user",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "workbook",
+        "current_worksheet",
+        "worksheets",
+        "sheets",
+        "cell_content",
+        "cell_range",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "hotkey",
+        "id",
+        "title",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_name",
+        "tag_title",
+        "tag_value",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "6d4dfc1f387b42228a9d156426a8b016": {
+        "reasoning": "Node 0 is the initial opening of the browser and navigation to the base application URL, which is a universal prerequisite for any routine. Node 1 then navigates to the explicit authentication page, and Node 2 performs the login action on that page. Both are standard global setup steps that all subsequent business routines depend on. Nodes 3 through 47 involve specific actions within /billing, /support, /finance, /hr, and /warehouse modules, often with routine-specific data (e.g., REF-801, TKT-901, INV-501, EMP-301, SKU-701). These are clearly part of individual routines and not shared boundaries. Node 48, 'Clear Session', and Node 49, 'navigateTo' the /logout URL, represent the final teardown steps for the entire session, logically ending all work and closing the application access.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            48,
+            49
+        ]
+    },
+    "04b3ccb5800ecf7cb68f8ad87acdc70c": [
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                3,
+                6,
+                9
+            ],
+            "reasoning": "Nodes 3 (New Refund), 6 (REF-801 payload), and 9 (Confirm Refund) form a complete execution for refund REF-801."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                4,
+                7,
+                10
+            ],
+            "reasoning": "Nodes 4 (New Refund), 7 (REF-802 payload), and 10 (Confirm Refund) form a complete execution for refund REF-802."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                5,
+                8,
+                11
+            ],
+            "reasoning": "Nodes 5 (New Refund), 8 (REF-803 payload), and 11 (Confirm Refund) form a complete execution for refund REF-803."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                12,
+                15,
+                18
+            ],
+            "reasoning": "Nodes 12 (Ticket TKT-901), 15 (Resolve), and 18 (Close Ticket) form a complete execution for ticket TKT-901."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                13,
+                16,
+                19
+            ],
+            "reasoning": "Nodes 13 (Ticket TKT-902), 16 (Resolve), and 19 (Close Ticket) form a complete execution for ticket TKT-902."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                14,
+                17,
+                20
+            ],
+            "reasoning": "Nodes 14 (Ticket TKT-903), 17 (Resolve), and 20 (Close Ticket) form a complete execution for ticket TKT-903."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                21,
+                24,
+                27
+            ],
+            "reasoning": "Nodes 21 (Open Invoice), 24 (INV-501 payload), and 27 (Approve) form a complete execution for invoice INV-501."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                22,
+                25,
+                28
+            ],
+            "reasoning": "Nodes 22 (Open Invoice), 25 (INV-502 payload), and 28 (Approve) form a complete execution for invoice INV-502."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                23,
+                26,
+                29
+            ],
+            "reasoning": "Nodes 23 (Open Invoice), 26 (INV-503 payload), and 29 (Approve) form a complete execution for invoice INV-503."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                30,
+                33,
+                36
+            ],
+            "reasoning": "Nodes 30 (Add Employee), 33 (EMP-301 payload), and 36 (Save Profile) form a complete execution for employee EMP-301."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                31,
+                34,
+                37
+            ],
+            "reasoning": "Nodes 31 (Add Employee), 34 (EMP-302 payload), and 37 (Save Profile) form a complete execution for employee EMP-302."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                32,
+                35,
+                38
+            ],
+            "reasoning": "Nodes 32 (Add Employee), 35 (EMP-303 payload), and 38 (Save Profile) form a complete execution for employee EMP-303."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                39,
+                42,
+                45
+            ],
+            "reasoning": "Nodes 39 (Stock SKU-701 click), 42 (SKU-701 paste), and 45 (Commit Count) form a complete execution for SKU-701."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                40,
+                43,
+                46
+            ],
+            "reasoning": "Nodes 40 (Stock SKU-702 click), 43 (SKU-702 paste), and 46 (Commit Count) form a complete execution for SKU-702."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                41,
+                44,
+                47
+            ],
+            "reasoning": "Nodes 41 (Stock SKU-703 click), 44 (SKU-703 paste), and 47 (Commit Count) form a complete execution for SKU-703."
+        }
+    ],
+    "135b8f8f5ed898dd7c53fc14e52fbeec": [
+        "timestamp",
+        "user",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "workbook",
+        "current_worksheet",
+        "worksheets",
+        "sheets",
+        "cell_content",
+        "cell_range",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "hotkey",
+        "id",
+        "title",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_name",
+        "tag_title",
+        "tag_value",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "12051ba7ab3318877a42d9e6088ecf36": {
+        "reasoning": "Node 0 (open browser), Node 1 (navigate to auth), and Node 2 (login button click) are classic global prerequisites because they set up the environment and authenticate the user for the entire session, independent of any specific business routine. Nodes 3 through 47 are all specific business routines (e.g., 'New Refund', 'Ticket TKT-901', 'Open Invoice', 'Add Employee', 'Stock SKU-701') identifiable by their specific URLs and/or specific data payloads like refund IDs, ticket numbers, or employee IDs. Node 48 ('Clear Session') and Node 49 (navigate to 'logout') are global post-requisites as they tear down the entire session, which every routine implicitly depends on.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            48,
+            49
+        ]
+    },
+    "ca9500b19c1a360a4a14c8f6d89bb98c": [
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                3,
+                4,
+                5
+            ],
+            "reasoning": "Initiates a refund, pastes 'REF-801', and confirms it. This forms the first complete refund process."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                6,
+                7,
+                8
+            ],
+            "reasoning": "Opens 'TKT-901', resolves it, and closes the ticket. This completes the first ticket closing process."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                9,
+                10,
+                11
+            ],
+            "reasoning": "Opens an invoice, pastes 'INV-501', and approves it. This completes the first invoice approval process."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                12,
+                13,
+                14
+            ],
+            "reasoning": "Adds an employee, pastes 'EMP-301', and saves the profile. This completes the first employee onboarding process."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                15,
+                16,
+                17
+            ],
+            "reasoning": "Selects 'SKU-701', pastes its ID, and commits the count. This completes the first inventory update process."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                18,
+                19,
+                20
+            ],
+            "reasoning": "Initiates a new refund, pastes 'REF-802', and confirms it. This forms the second complete refund process."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                21,
+                22,
+                23
+            ],
+            "reasoning": "Opens 'TKT-902', resolves it, and closes the ticket. This completes the second ticket closing process."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                24,
+                25,
+                26
+            ],
+            "reasoning": "Opens an invoice, pastes 'INV-502', and approves it. This completes the second invoice approval process."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                27,
+                28,
+                29
+            ],
+            "reasoning": "Adds an employee, pastes 'EMP-302', and saves the profile. This completes the second employee onboarding process."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                30,
+                31,
+                32
+            ],
+            "reasoning": "Selects 'SKU-702', pastes its ID, and commits the count. This completes the second inventory update process."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                33,
+                34,
+                35
+            ],
+            "reasoning": "Initiates a new refund, pastes 'REF-803', and confirms it. This forms the third complete refund process."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                36,
+                37,
+                38
+            ],
+            "reasoning": "Opens 'TKT-903', resolves it, and closes the ticket. This completes the third ticket closing process."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                39,
+                40,
+                41
+            ],
+            "reasoning": "Opens an invoice, pastes 'INV-503', and approves it. This completes the third invoice approval process."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                42,
+                43,
+                44
+            ],
+            "reasoning": "Adds an employee, pastes 'EMP-303', and saves the profile. This completes the third employee onboarding process."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                45,
+                46,
+                47
+            ],
+            "reasoning": "Selects 'SKU-703', pastes its ID, and commits the count. This completes the third inventory update process."
+        }
+    ],
+    "a381273b015baaaf509f19b649503819": [
+        "timestamp",
+        "user",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "workbook",
+        "current_worksheet",
+        "worksheets",
+        "sheets",
+        "cell_content",
+        "cell_range",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "hotkey",
+        "id",
+        "title",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_name",
+        "tag_title",
+        "tag_value",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "79000f0c98480517e812206805b93e9b": [],
+    "a4d51da8e0589da8e216e2ff7a46f1e2": [
+        "timestamp",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "workbook",
+        "current_worksheet",
+        "worksheets",
+        "sheets",
+        "cell_content",
+        "cell_range",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "hotkey",
+        "id",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_name",
+        "tag_title",
+        "tag_value",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "5c9500c8a1927c2fdb5f8cdadc9fa7cb": {
+        "reasoning": "Node 0: Opens the Chrome browser to the main ERP domain, serving as a global prerequisite to launch the application. Node 1: Navigates to the authentication page, a common entry point before any routine can begin. Node 2: Clicks the 'Login' button on the authentication page, completing the global authentication process essential for all subsequent routines. Node 49: Navigates to the logout URL, signifying the end of the entire session and a global post-requisite. All other nodes involve specific actions (clicks, pastes) within different modules (billing, support, finance, etc.) or on specific items (tickets, invoices, SKUs), indicating they belong to individual, routine-specific tasks rather than globally shared boundaries.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            49
+        ]
+    },
+    "3b570da69b0c18268d0d170b3320eaba": [
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                3,
+                18,
+                33
+            ],
+            "reasoning": "Nodes 3, 18, and 33 follow a logical flow for starting a new refund (click New Refund, paste REF-801, confirm refund) on the billing page."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                4,
+                19,
+                34
+            ],
+            "reasoning": "Nodes 4, 19, and 34 initiate a second distinct refund process (click New Refund, paste REF-802, confirm refund) on the billing page."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                5,
+                20,
+                35
+            ],
+            "reasoning": "Nodes 5, 20, and 35 complete the third distinct refund process (click New Refund, paste REF-803, confirm refund) on the billing page."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                6,
+                21
+            ],
+            "reasoning": "Node 6 selects ticket TKT-901, and node 21 performs the 'Resolve' action, which precedes 'Close Ticket' conceptually for this ticket."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                7,
+                22
+            ],
+            "reasoning": "Node 7 selects ticket TKT-902, and node 22 performs the 'Resolve' action, representing a second distinct ticket closure."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                8,
+                23
+            ],
+            "reasoning": "Node 8 selects ticket TKT-903, and node 23 performs the 'Resolve' action, completing the third distinct ticket closure."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                9,
+                24,
+                39
+            ],
+            "reasoning": "Nodes 9, 24, and 39 form a sequence for approving an invoice (click Open Invoice, paste INV-501, click Approve) on the finance page."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                10,
+                25,
+                40
+            ],
+            "reasoning": "Nodes 10, 25, and 40 represent a second distinct invoice approval flow (click Open Invoice, paste INV-502, click Approve) on the finance page."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                11,
+                26,
+                41
+            ],
+            "reasoning": "Nodes 11, 26, and 41 complete the third distinct invoice approval sequence (click Open Invoice, paste INV-503, click Approve) on the finance page."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                12,
+                27,
+                42
+            ],
+            "reasoning": "Nodes 12, 27, and 42 initiate an employee onboarding process (click Add Employee, paste EMP-301, click Save Profile) on the HR page."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                13,
+                28,
+                43
+            ],
+            "reasoning": "Nodes 13, 28, and 43 represent a second distinct employee onboarding flow (click Add Employee, paste EMP-302, click Save Profile) on the HR page."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                14,
+                29,
+                44
+            ],
+            "reasoning": "Nodes 14, 29, and 44 complete the third distinct employee onboarding sequence (click Add Employee, paste EMP-303, click Save Profile) on the HR page."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                15,
+                30,
+                45
+            ],
+            "reasoning": "Nodes 15, 30, and 45 logically follow for updating inventory (select Stock SKU-701, paste SKU-701, Commit Count) on the warehouse page."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                16,
+                31,
+                46
+            ],
+            "reasoning": "Nodes 16, 31, and 46 represent a second distinct inventory update (select Stock SKU-702, paste SKU-702, Commit Count) on the warehouse page."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                17,
+                32,
+                47
+            ],
+            "reasoning": "Nodes 17, 32, and 47 complete the third distinct inventory update sequence (select Stock SKU-703, paste SKU-703, Commit Count) on the warehouse page."
+        }
+    ],
+    "78114ba3d633716cff1150476997b023": {
+        "reasoning": "Node 0 (open browser to https://erp.internal.com), Node 1 (navigateTo https://erp.internal.com/auth), and Node 2 (click Login button on auth page) represent the initial setup steps required to access the application, which are common to all subsequent routines. They don't carry any routine-specific payload. Nodes 3 through 47 are clearly part of specific business routines, involving actions like creating refunds, viewing tickets, opening invoices, adding employees, or managing stock, often with specific IDs or distinct business functions. Node 48 (click Clear Session) and Node 49 (navigateTo logout page) represent the final teardown steps for the entire session, indicating a global sign-out and session termination. These are not specific to any single routine but apply to ending the entire interaction with the ERP.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            48,
+            49
+        ]
+    },
+    "ca068e4a7ee715c7b5584872e59862cc": [
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                3,
+                18,
+                33
+            ],
+            "reasoning": "Starts a new refund, pastes REF-801, and confirms it."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                4,
+                19,
+                34
+            ],
+            "reasoning": "Starts a new refund, pastes REF-802, and confirms it."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                5,
+                20,
+                35
+            ],
+            "reasoning": "Starts a new refund, pastes REF-803, and confirms it."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                6,
+                21,
+                36
+            ],
+            "reasoning": "Opens ticket TKT-901, resolves it, and closes the ticket."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                7,
+                22,
+                37
+            ],
+            "reasoning": "Opens ticket TKT-902, resolves it, and closes the ticket."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                8,
+                23,
+                38
+            ],
+            "reasoning": "Opens ticket TKT-903, resolves it, and closes the ticket."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                9,
+                24,
+                39
+            ],
+            "reasoning": "Opens an invoice, pastes INV-501, and approves it."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                10,
+                25,
+                40
+            ],
+            "reasoning": "Opens an invoice, pastes INV-502, and approves it."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                11,
+                26,
+                41
+            ],
+            "reasoning": "Opens an invoice, pastes INV-503, and approves it."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                12,
+                27,
+                42
+            ],
+            "reasoning": "Adds a new employee, pastes EMP-301, and saves the profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                13,
+                28,
+                43
+            ],
+            "reasoning": "Adds a new employee, pastes EMP-302, and saves the profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                14,
+                29,
+                44
+            ],
+            "reasoning": "Adds a new employee, pastes EMP-303, and saves the profile."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                15,
+                30,
+                45
+            ],
+            "reasoning": "Selects stock SKU-701, pastes its ID, and commits the count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                16,
+                31,
+                46
+            ],
+            "reasoning": "Selects stock SKU-702, pastes its ID, and commits the count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                17,
+                32,
+                47
+            ],
+            "reasoning": "Selects stock SKU-703, pastes its ID, and commits the count."
+        }
+    ],
+    "9557ca5302ad2d28a91837dee81b3b88": [],
+    "b2ab0e7260da7aef256736e413a908eb": [
+        "timestamp",
+        "user",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "worksheets",
+        "sheets",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "id",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_name",
+        "tag_title",
+        "tag_value",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "d62ea0d9b7352ce75bb8ef5e91352f40": {
+        "reasoning": "Node 0, 'Launch Workspace', is the initial action to open the Citrix environment, which is a foundational setup step required for all subsequent tasks. Node 1, 'VPN Token', is an authentication step within the Citrix environment, a classic globally shared prerequisite. Nodes 2-65 represent various routine-specific actions across different applications (CardTool, Excel, Chrome for 'recon' or 'loans') with specific payloads (e.g., 'New Card', 'ledger.xlsx', 'https://bank.intra/recon', 'Application LN-9901'). These are not globally shared. Node 66, 'Save Audit Log', is a general system action that would typically be performed at the end of a session to record all activities, making it a global post-requisite. Node 67, 'Lock Workstation', is a general system security action to secure the session, which applies to the entire session's end. Node 68, 'Close Workspace', is the final action to close the main operating environment, a clear global post-requisite.",
+        "shared_indices": [
+            0,
+            1,
+            66,
+            67,
+            68
+        ]
+    },
+    "42cad861434f1f61be7ca344dabaadf2": [
+        {
+            "routine_name": "Reconcile Account",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                4,
+                26,
+                35
+            ],
+            "reasoning": "Navigates to recon, pastes ACC-4400, and matches it. This completes the first reconciliation."
+        },
+        {
+            "routine_name": "Reconcile Account",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                9,
+                24,
+                38
+            ],
+            "reasoning": "Navigates to recon, pastes ACC-4401, and matches it. This completes the second reconciliation."
+        },
+        {
+            "routine_name": "Reconcile Account",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                10,
+                32,
+                45
+            ],
+            "reasoning": "Navigates to recon, pastes ACC-4402, and matches it. This completes the third reconciliation."
+        },
+        {
+            "routine_name": "Reconcile Account",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                12,
+                21,
+                49
+            ],
+            "reasoning": "Navigates to recon, pastes ACC-4403, and matches it. This completes the fourth reconciliation."
+        },
+        {
+            "routine_name": "Post Journal",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                3,
+                28,
+                34,
+                50
+            ],
+            "reasoning": "Adds a new journal row, enters JRN-7700 and Debit 500, then saves. This completes the first journal post."
+        },
+        {
+            "routine_name": "Post Journal",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                13,
+                18,
+                37,
+                53
+            ],
+            "reasoning": "Adds a new journal row, enters JRN-7701 and Debit 500, then saves. This completes the second journal post."
+        },
+        {
+            "routine_name": "Post Journal",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                17,
+                33,
+                47,
+                55
+            ],
+            "reasoning": "Adds a new journal row, enters JRN-7702 and Debit 500, then saves. This completes the third journal post."
+        },
+        {
+            "routine_name": "Post Journal",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                16,
+                31,
+                41,
+                61
+            ],
+            "reasoning": "Adds a new journal row, enters JRN-7703 and Debit 500, then saves. This completes the fourth journal post."
+        },
+        {
+            "routine_name": "Issue Card",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                2,
+                22,
+                42,
+                51
+            ],
+            "reasoning": "Clicks new card, types holder name for CARD-3300, assigns BIN, and prints. This completes the first card issue."
+        },
+        {
+            "routine_name": "Issue Card",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                7,
+                19,
+                46,
+                56
+            ],
+            "reasoning": "Clicks new card, types holder name for CARD-3301, assigns BIN, and prints. This completes the second card issue."
+        },
+        {
+            "routine_name": "Issue Card",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                14,
+                29,
+                48,
+                58
+            ],
+            "reasoning": "Clicks new card, types holder name for CARD-3302, assigns BIN, and prints. This completes the third card issue."
+        },
+        {
+            "routine_name": "Issue Card",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                15,
+                30,
+                43,
+                59
+            ],
+            "reasoning": "Clicks new card, types holder name for CARD-3303, assigns BIN, and prints. This completes the fourth card issue."
+        },
+        {
+            "routine_name": "Approve Loan",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                5,
+                23,
+                40,
+                57,
+                65
+            ],
+            "reasoning": "Navigates to loans, clicks LN-9900, performs risk check, underwrites, and approves. This completes the first loan approval."
+        },
+        {
+            "routine_name": "Approve Loan",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                6,
+                20,
+                36,
+                52,
+                62
+            ],
+            "reasoning": "Navigates to loans, clicks LN-9901, performs risk check, underwrites, and approves. This completes the second loan approval."
+        },
+        {
+            "routine_name": "Approve Loan",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                8,
+                25,
+                39,
+                54,
+                63
+            ],
+            "reasoning": "Navigates to loans, clicks LN-9902, performs risk check, underwrites, and approves. This completes the third loan approval."
+        },
+        {
+            "routine_name": "Approve Loan",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                11,
+                27,
+                44,
+                60,
+                64
+            ],
+            "reasoning": "Navigates to loans, clicks LN-9903, performs risk check, underwrites, and approves. This completes the fourth loan approval."
+        }
+    ],
+    "851e209219621ecd6ffbd54a826b5d10": [
+        "scroll",
+        "mouseMove",
+        "windowFocus",
+        "zoomChange",
+        "resizeWindow",
+        "mouseHover"
+    ],
+    "a07d2e78f8ece24067c125875c14bcd3": [
+        "timestamp",
+        "user",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "workbook",
+        "current_worksheet",
+        "worksheets",
+        "sheets",
+        "cell_content",
+        "cell_range",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "hotkey",
+        "id",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_name",
+        "tag_title",
+        "tag_value",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "c010b36be952fc0fcf9368a31dc01acf": {
+        "reasoning": "Node 0 (opening the browser to the ERP URL) is the initial setup step, essential for all subsequent operations. Nodes 1-3 constitute the authentication/login sequence (navigating to auth, pasting credentials, clicking login), which is a global prerequisite for any routine to be executed within the ERP system. Nodes 4-140 are routine-specific actions related to finance, billing, support, HR, reports, and warehouse, as well as unrelated Spotify/Slack actions, and are not considered shared boundaries. Nodes 141-142 (saving preferences and clearing session) are session management actions, but not strictly 'teardown' in the sense of closing the application. Node 143 (navigating to logout) is the definitive global post-requisite, indicating the end of the entire ERP session.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            3,
+            143
+        ]
+    },
+    "6b84653988ee7e7dbac20965de0bea29": [
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                5,
+                57,
+                95,
+                114
+            ],
+            "reasoning": "Starts with 'New Refund', pastes 'REF-801', validates, and confirms."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                10,
+                71,
+                96,
+                118
+            ],
+            "reasoning": "Starts with 'New Refund', pastes 'REF-802', validates, and confirms."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                17,
+                50,
+                102,
+                129
+            ],
+            "reasoning": "Starts with 'New Refund', pastes 'REF-803', validates, and confirms."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                26,
+                54,
+                107,
+                130
+            ],
+            "reasoning": "Starts with 'New Refund', pastes 'REF-804', validates, and confirms."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                8,
+                30,
+                62,
+                82
+            ],
+            "reasoning": "Opens Ticket TKT-902, another ticket TKT-901, resolves, and closes. Assumes TKT-901 is related to TKT-902."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                13,
+                64,
+                106
+            ],
+            "reasoning": "Opens Ticket TKT-903, resolves, and closes."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                31,
+                67,
+                108
+            ],
+            "reasoning": "Opens Ticket TKT-904, resolves, and closes."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                75,
+                112,
+                115,
+                120,
+                123,
+                136
+            ],
+            "reasoning": "Resolves a ticket (likely a 4th implicitly opened), closes it. Includes Slack chat related to resolution."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                4,
+                49,
+                78,
+                113,
+                135
+            ],
+            "reasoning": "Opens invoice, pastes INV-501, validates, approves, and archives."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                6,
+                55,
+                85,
+                116,
+                137
+            ],
+            "reasoning": "Opens invoice, pastes INV-502, validates, approves, and archives."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                7,
+                66,
+                93,
+                124,
+                138
+            ],
+            "reasoning": "Opens invoice, pastes INV-503, validates, approves, and archives."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                16,
+                45,
+                97,
+                128,
+                139
+            ],
+            "reasoning": "Opens invoice, pastes INV-504, validates, approves, and archives."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                12,
+                42,
+                87
+            ],
+            "reasoning": "Adds employee, pastes EMP-301 (first instance), and saves profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                19,
+                48,
+                90
+            ],
+            "reasoning": "Adds employee, pastes EMP-302, and saves profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                23,
+                76,
+                94
+            ],
+            "reasoning": "Adds employee, pastes EMP-303, and saves profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                35,
+                46,
+                98
+            ],
+            "reasoning": "Adds employee, pastes EMP-304, and saves profile."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                22,
+                74,
+                80,
+                100,
+                110,
+                117
+            ],
+            "reasoning": "Views SKU-703, pastes SKU-703, recounts, and commits count. Including an extra recount and commit."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                27,
+                52,
+                101,
+                109,
+                119
+            ],
+            "reasoning": "Views SKU-704, pastes SKU-704, recounts, and commits count. Including an extra recount."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                28,
+                59,
+                38,
+                121
+            ],
+            "reasoning": "Views SKU-704, pastes SKU-702, and commits count. Node 38 (SKU-702 click) seems out of place if 28 is SKU-704, but both are inventory related."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                34,
+                73,
+                122
+            ],
+            "reasoning": "Views SKU-701, pastes SKU-701, and commits count."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                14,
+                70,
+                84,
+                125
+            ],
+            "reasoning": "Creates new report, pastes RPT-601, runs, and exports."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                15,
+                41,
+                88,
+                126
+            ],
+            "reasoning": "Creates new report, pastes RPT-602, runs, and exports."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                24,
+                51,
+                92,
+                127
+            ],
+            "reasoning": "Creates new report, pastes RPT-603, runs, and exports."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                33,
+                37,
+                39,
+                105,
+                132
+            ],
+            "reasoning": "Creates new report, another new report (37), pastes RPT-604, runs, and exports."
+        }
+    ],
+    "ce882ff4dd7d379188ea460330c8b9c8": [
+        9,
+        11,
+        18,
+        20,
+        21,
+        25,
+        29,
+        32,
+        40,
+        44,
+        47,
+        53,
+        56,
+        58,
+        60,
+        61,
+        63,
+        65,
+        69,
+        72,
+        77,
+        79,
+        81,
+        83,
+        86,
+        89,
+        91,
+        99,
+        103,
+        104,
+        111,
+        115,
+        120,
+        123,
+        134,
+        136,
+        140,
+        141,
+        142,
+        143
+    ],
+    "df66e1930baabe9ec949ac4b9000ed7c": [
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                4,
+                49,
+                97,
+                128,
+                139
+            ],
+            "reasoning": "Opens invoice, pastes INV-501, validates, approves, and archives the invoice."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                6,
+                55,
+                93,
+                124,
+                137
+            ],
+            "reasoning": "Opens invoice, pastes INV-502, validates, approves, and archives the invoice."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                7,
+                66,
+                85,
+                116,
+                138
+            ],
+            "reasoning": "Opens invoice, pastes INV-503, validates, approves, and archives the invoice."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                16,
+                45,
+                78,
+                113,
+                135
+            ],
+            "reasoning": "Opens invoice, pastes INV-504, validates, approves, and archives the invoice."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                5,
+                57,
+                95,
+                114
+            ],
+            "reasoning": "Initiates a new refund, pastes REF-801, validates, and confirms the refund."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                10,
+                71,
+                96,
+                118
+            ],
+            "reasoning": "Initiates a new refund, pastes REF-802, validates, and confirms the refund."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                17,
+                50,
+                102,
+                129
+            ],
+            "reasoning": "Initiates a new refund, pastes REF-803, validates, and confirms the refund."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                26,
+                54,
+                107,
+                130
+            ],
+            "reasoning": "Initiates a new refund, pastes REF-804, validates, and confirms the refund."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                8,
+                62,
+                82
+            ],
+            "reasoning": "Opens Ticket TKT-902, resolves it, and closes the ticket."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                13,
+                64,
+                106
+            ],
+            "reasoning": "Opens Ticket TKT-903, resolves it, and closes the ticket."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                30,
+                67,
+                108
+            ],
+            "reasoning": "Opens Ticket TKT-901, resolves it, and closes the ticket."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                31,
+                68,
+                112
+            ],
+            "reasoning": "Opens Ticket TKT-904, resolves it, and closes the ticket."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                12,
+                42,
+                87
+            ],
+            "reasoning": "Adds a new employee, pastes EMP-301, and saves the profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                19,
+                48,
+                90
+            ],
+            "reasoning": "Adds a new employee, pastes EMP-302, and saves the profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                23,
+                76,
+                94
+            ],
+            "reasoning": "Adds a new employee, pastes EMP-303, and saves the profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                35,
+                46,
+                98
+            ],
+            "reasoning": "Adds a new employee, pastes EMP-304, and saves the profile."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                22,
+                74,
+                80,
+                117
+            ],
+            "reasoning": "Opens Stock SKU-703, pastes SKU-703, initiates recount, and commits count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                27,
+                52,
+                100,
+                119
+            ],
+            "reasoning": "Opens Stock SKU-704, pastes SKU-704, initiates recount, and commits count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                28,
+                59,
+                101,
+                121
+            ],
+            "reasoning": "Opens Stock SKU-704, pastes SKU-702, initiates recount, and commits count (note the different SKU paste, implying a correction or error handled by the robot in the same record). Prioritizing the stock page context for flow."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                34,
+                73,
+                109,
+                122
+            ],
+            "reasoning": "Opens Stock SKU-701, pastes SKU-701, initiates recount, and commits count."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                14,
+                70,
+                84,
+                125
+            ],
+            "reasoning": "Initiates a new report, pastes RPT-601, runs, and exports to PDF."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                15,
+                41,
+                88,
+                126
+            ],
+            "reasoning": "Initiates a new report, pastes RPT-602, runs, and exports to PDF."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                24,
+                51,
+                92,
+                127
+            ],
+            "reasoning": "Initiates a new report, pastes RPT-603, runs, and exports to PDF."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                33,
+                39,
+                105,
+                132
+            ],
+            "reasoning": "Initiates a new report, pastes RPT-604, runs, and exports to PDF."
+        }
+    ],
+    "5189ea04873a01f1438be691531e940f": {
+        "reasoning": "Node 0 (opening the browser to the ERP URL) is the initial global setup, as it starts the entire session. Nodes 1, 2, and 3 (navigating to the auth page, pasting credentials, and clicking login) together constitute the global authentication/login prerequisite that applies to all subsequent routines. Nodes 4-140 are routine-specific actions (e.g., opening invoices, creating refunds, adding employees, managing tickets, running reports, managing stock, and interacting with other applications like Spotify and Slack). These actions have specific payloads or target specific application sections, indicating they belong to individual business routines rather than the shared session boundary. Node 141 (saving preferences) and Node 142 (clearing the session) are global teardown steps performed before the final logout, as they manage global state. Node 143 (navigating to the logout URL) is the final global teardown step, ending the entire session.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            3,
+            141,
+            142,
+            143
+        ]
+    },
+    "618d06e7ac6f560ef7bbc00a8996c20d": [
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                5,
+                57,
+                95,
+                114
+            ],
+            "reasoning": "Opens new refund, pastes REF-801, validates, then confirms refund."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                10,
+                71,
+                96,
+                118
+            ],
+            "reasoning": "Opens new refund, pastes REF-802, validates, then confirms refund."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                17,
+                50,
+                102,
+                129
+            ],
+            "reasoning": "Opens new refund, pastes REF-803, validates, then confirms refund."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                26,
+                54,
+                107,
+                130
+            ],
+            "reasoning": "Opens new refund, pastes REF-804, validates, then confirms refund."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                30,
+                62,
+                82
+            ],
+            "reasoning": "Opens Ticket TKT-901, resolves, then closes the ticket."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                8,
+                64,
+                106
+            ],
+            "reasoning": "Opens Ticket TKT-902, resolves, then closes the ticket."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                13,
+                67,
+                108
+            ],
+            "reasoning": "Opens Ticket TKT-903, resolves, then closes the ticket."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                31,
+                68,
+                112
+            ],
+            "reasoning": "Opens Ticket TKT-904, resolves, then closes the ticket."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                4,
+                49,
+                78,
+                113,
+                135
+            ],
+            "reasoning": "Opens Invoice, pastes INV-501, validates, approves, then archives."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                6,
+                55,
+                85,
+                116,
+                137
+            ],
+            "reasoning": "Opens Invoice, pastes INV-502, validates, approves, then archives."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                7,
+                66,
+                93,
+                124,
+                138
+            ],
+            "reasoning": "Opens Invoice, pastes INV-503, validates, approves, then archives."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                16,
+                45,
+                97,
+                128,
+                139
+            ],
+            "reasoning": "Opens Invoice, pastes INV-504, validates, approves, then archives."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                12,
+                42,
+                87
+            ],
+            "reasoning": "Adds employee, pastes EMP-301, then saves profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                19,
+                48,
+                90
+            ],
+            "reasoning": "Adds employee, pastes EMP-302, then saves profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                23,
+                76,
+                94
+            ],
+            "reasoning": "Adds employee, pastes EMP-303, then saves profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                35,
+                46,
+                98
+            ],
+            "reasoning": "Adds employee, pastes EMP-304, then saves profile."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                34,
+                73,
+                80,
+                100,
+                117
+            ],
+            "reasoning": "Opens Stock SKU-701, pastes SKU-701, recounts, recounts, then commits count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                38,
+                59,
+                101,
+                109,
+                119
+            ],
+            "reasoning": "Opens Stock SKU-702, pastes SKU-702, recounts, recounts, then commits count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                22,
+                74,
+                110,
+                121
+            ],
+            "reasoning": "Opens Stock SKU-703, pastes SKU-703, recounts, then commits count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                27,
+                52,
+                28,
+                122
+            ],
+            "reasoning": "Opens Stock SKU-704, pastes SKU-704, recounts (as 28 is a repeat of opening stock), then commits count."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                14,
+                70,
+                84,
+                125
+            ],
+            "reasoning": "Creates new report, pastes RPT-601, runs, then exports PDF."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                15,
+                41,
+                88,
+                126
+            ],
+            "reasoning": "Creates new report, pastes RPT-602, runs, then exports PDF."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                24,
+                51,
+                92,
+                127
+            ],
+            "reasoning": "Creates new report, pastes RPT-603, runs, then exports PDF."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                33,
+                39,
+                105,
+                132
+            ],
+            "reasoning": "Creates new report, pastes RPT-604, runs, then exports PDF."
+        }
+    ],
+    "3bbf65ddb8653b250f589a00d628c4ec": [
+        "timestamp",
+        "user",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "workbook",
+        "current_worksheet",
+        "worksheets",
+        "sheets",
+        "cell_content",
+        "cell_range",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "hotkey",
+        "id",
+        "title",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_name",
+        "tag_title",
+        "tag_value",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "20a026ea7ed7606b76fc5ba5da8c632e": [
+        9,
+        11,
+        18,
+        20,
+        21,
+        25,
+        29,
+        32,
+        40,
+        44,
+        47,
+        53,
+        56,
+        58,
+        60,
+        61,
+        63,
+        65,
+        69,
+        72,
+        79,
+        81,
+        83,
+        86,
+        89,
+        91,
+        99,
+        103,
+        104,
+        111,
+        115,
+        120,
+        123,
+        134,
+        136,
+        140,
+        141,
+        142,
+        143
+    ],
+    "5b84ae67e7aed054262e332faa749eca": {
+        "reasoning": "Node 0 opens the browser to the base URL, which is a foundational setup step for the entire session. Nodes 1-3 perform a complete authentication/login sequence by navigating to the auth page, pasting credentials, and clicking the login button. These actions are prerequisites for any business routine within the ERP system. Nodes 4-140 are all specific actions related to various business routines (finance, billing, support, HR, reports, warehouse), often containing routine-specific URLs or data (e.g., 'Open Invoice', 'New Refund', 'Ticket TKT-902', 'Add Employee', 'New Report', 'Stock SKU-703', specific IDs like INV-503, REF-802, RPT-601, SKU-703, EMP-303), and also include interactions with other applications like Spotify and Slack which are not part of the core ERP session boundaries. Node 141 'Save Preferences' and Node 142 'Clear Session' are generic session cleanup actions performed once at the very end. Node 143 'navigateTo ... logout' explicitly ends the entire user session. These final three nodes constitute the global teardown of the session.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            3,
+            141,
+            142,
+            143
+        ]
+    },
+    "ab792d26fdf28ae59e8cc18a1b3043cd": [
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                4,
+                49,
+                78,
+                113,
+                135
+            ],
+            "reasoning": "Starts with 'Open Invoice', followed by pasting INV-501, validating it, approving, and finally archiving."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                5,
+                57,
+                95,
+                114,
+                129
+            ],
+            "reasoning": "Starts with 'New Refund', followed by pasting REF-801, validating it, and confirming the refund."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                8,
+                62,
+                75,
+                82
+            ],
+            "reasoning": "Starts by opening Ticket TKT-902, resolving it multiple times, and then closing it."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                10,
+                71,
+                96,
+                118,
+                130
+            ],
+            "reasoning": "Starts with 'New Refund', followed by pasting REF-802, validating it, and confirming the refund."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                12,
+                42,
+                87
+            ],
+            "reasoning": "Starts with 'Add Employee', followed by pasting EMP-301, and saving the profile."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                13,
+                64,
+                106
+            ],
+            "reasoning": "Starts by opening Ticket TKT-903, resolving it, and then closing it."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                14,
+                70,
+                84,
+                125
+            ],
+            "reasoning": "Starts with 'New Report', followed by pasting RPT-601, running it, and exporting it."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                6,
+                45,
+                85,
+                116,
+                137
+            ],
+            "reasoning": "Starts with 'Open Invoice', followed by pasting INV-504, validating it, approving, and finally archiving."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                17,
+                50,
+                102,
+                131
+            ],
+            "reasoning": "Starts with 'New Refund', followed by pasting REF-803, and validating it, and confirming the refund."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                19,
+                43,
+                90
+            ],
+            "reasoning": "Starts with 'Add Employee', followed by pasting EMP-301 again, and saving the profile."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                22,
+                74,
+                80,
+                117
+            ],
+            "reasoning": "Starts by opening Stock SKU-703, pasting SKU-703, recounting it, and committing the count."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                23,
+                48,
+                94
+            ],
+            "reasoning": "Starts with 'Add Employee', followed by pasting EMP-302, and saving the profile."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                24,
+                41,
+                88,
+                126
+            ],
+            "reasoning": "Starts with 'New Report', followed by pasting RPT-602, running it, and exporting it."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                26,
+                54,
+                107
+            ],
+            "reasoning": "Starts with 'New Refund', followed by pasting REF-804, and validating it."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                27,
+                52,
+                100,
+                119
+            ],
+            "reasoning": "Starts by opening Stock SKU-704, pasting SKU-704, recounting it, and committing the count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                28,
+                101,
+                121
+            ],
+            "reasoning": "Starts by opening Stock SKU-704, recounting it, and committing the count."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                30,
+                67,
+                108
+            ],
+            "reasoning": "Starts by opening Ticket TKT-901, resolving it, and then closing it."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                31,
+                68,
+                112
+            ],
+            "reasoning": "Starts by opening Ticket TKT-904, resolving it, and then closing it."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                33,
+                51,
+                92,
+                127
+            ],
+            "reasoning": "Starts with 'New Report', followed by pasting RPT-603, running it, and exporting it."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                34,
+                73,
+                109,
+                122
+            ],
+            "reasoning": "Starts by opening Stock SKU-701, pasting SKU-701, recounting it, and committing the count."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                35,
+                76,
+                98
+            ],
+            "reasoning": "Starts with 'Add Employee', followed by pasting EMP-303, and saving the profile."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                7,
+                55,
+                93,
+                124,
+                138
+            ],
+            "reasoning": "Starts with 'Open Invoice', followed by pasting INV-502, validating it, approving, and finally archiving."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                16,
+                66,
+                97,
+                128,
+                139
+            ],
+            "reasoning": "Starts with 'Open Invoice', followed by pasting INV-503, validating it, approving, and finally archiving."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                37,
+                39,
+                105,
+                133
+            ],
+            "reasoning": "Starts with 'New Report', followed by pasting RPT-604, running it, and exporting it."
+        }
+    ],
+    "d6e1b64cdb9a6830404565588441b6c7": [
+        "timestamp",
+        "user",
+        "event_relevance",
+        "event_src_path",
+        "event_dest_path",
+        "mouse_coord",
+        "workbook",
+        "current_worksheet",
+        "worksheets",
+        "sheets",
+        "cell_content",
+        "cell_range",
+        "cell_range_number",
+        "window_size",
+        "slides",
+        "effect",
+        "hotkey",
+        "id",
+        "title",
+        "description",
+        "eventQual",
+        "tab_moved_from_index",
+        "tab_moved_to_index",
+        "newZoomFactor",
+        "oldZoomFactor",
+        "tab_pinned",
+        "tab_audible",
+        "tab_muted",
+        "window_ingognito",
+        "file_size",
+        "tag_category",
+        "tag_name",
+        "tag_title",
+        "tag_value",
+        "tag_checked",
+        "tag_html",
+        "tag_href",
+        "tag_option",
+        "tag_attributes",
+        "xpath",
+        "xpath_full",
+        "screenshot"
+    ],
+    "2d39738ed9fa1faec815e1676d3cad96": [
+        9,
+        11,
+        18,
+        20,
+        21,
+        25,
+        29,
+        32,
+        40,
+        44,
+        47,
+        53,
+        56,
+        58,
+        60,
+        61,
+        63,
+        65,
+        69,
+        72,
+        77,
+        79,
+        81,
+        83,
+        86,
+        89,
+        91,
+        99,
+        103,
+        104,
+        111,
+        115,
+        120,
+        123,
+        134,
+        136,
+        140,
+        141,
+        142,
+        143
+    ],
+    "953780329337f1deca91a16d6201a763": {
+        "reasoning": "Node 0 (open browser to base URL), Node 1 (navigateTo authentication page), Node 2 (paste login credentials), and Node 3 (click Login button) are all initial setup steps required to access the ERP application, making them global prerequisites. All subsequent actions (Nodes 4-140) involve specific financial, billing, support, HR, reports, or warehouse items (e.g., specific invoice, refund, ticket, employee, report, SKU numbers) or interactions with other applications like Spotify and Slack, indicating they are part of individual business routines rather than global boundaries. Node 141 (Save Preferences) and Node 142 (Clear Session) are common session-cleanup actions performed once at the very end of a complete session, thus serving as global post-requisites. Node 143 (navigateTo logout) is the final action to end the entire session, a classic global teardown step.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            3,
+            141,
+            142,
+            143
+        ]
+    },
+    "21b2c533ed52c340a9e8f7fd6701bcff": [
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                26,
+                57,
+                107,
+                130,
+                131
+            ],
+            "reasoning": "Handles Refund 801: creation, paste, validation, and confirmation."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                5,
+                71,
+                95,
+                118
+            ],
+            "reasoning": "Handles Refund 802: creation, paste, validation, and confirmation."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                10,
+                50,
+                96,
+                129
+            ],
+            "reasoning": "Handles Refund 803: creation, paste, validation, and confirmation."
+        },
+        {
+            "routine_name": "Process Refund",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                17,
+                54,
+                102,
+                114
+            ],
+            "reasoning": "Handles Refund 804: creation, paste, validation, and confirmation."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                30,
+                67,
+                68,
+                82
+            ],
+            "reasoning": "Closes Ticket TKT-901: opening, resolving, and closing."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                8,
+                64,
+                106
+            ],
+            "reasoning": "Closes Ticket TKT-902: opening, resolving, and closing."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                13,
+                62,
+                108
+            ],
+            "reasoning": "Closes Ticket TKT-903: opening, resolving, and closing."
+        },
+        {
+            "routine_name": "Close Ticket",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                31,
+                75,
+                112
+            ],
+            "reasoning": "Closes Ticket TKT-904: opening, resolving, and closing."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                36,
+                49,
+                78,
+                124,
+                138
+            ],
+            "reasoning": "Approves Invoice 501: opening, paste, validation, approval, and archiving."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                6,
+                7,
+                55,
+                93,
+                116,
+                139
+            ],
+            "reasoning": "Approves Invoice 502: multiple openings, paste, validation, approval, and archiving."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                4,
+                66,
+                85,
+                113,
+                135
+            ],
+            "reasoning": "Approves Invoice 503: opening, paste, validation, approval, and archiving."
+        },
+        {
+            "routine_name": "Approve Invoice",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                16,
+                45,
+                97,
+                128,
+                137
+            ],
+            "reasoning": "Approves Invoice 504: opening, paste, validation, approval, and archiving."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                19,
+                42,
+                43,
+                90
+            ],
+            "reasoning": "Onboards Employee 301: adding, multiple pastes of ID, and saving profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                23,
+                48,
+                87
+            ],
+            "reasoning": "Onboards Employee 302: adding, paste of ID, and saving profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                35,
+                76,
+                77,
+                98
+            ],
+            "reasoning": "Onboards Employee 303: adding, multiple pastes of ID, and saving profile."
+        },
+        {
+            "routine_name": "Onboard Employee",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                12,
+                46,
+                94
+            ],
+            "reasoning": "Onboards Employee 304: adding, paste of ID, and saving profile."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                34,
+                73,
+                109,
+                110,
+                122
+            ],
+            "reasoning": "Updates Inventory SKU-701: opening, paste, multiple recounts, and committing count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                38,
+                59,
+                101,
+                117
+            ],
+            "reasoning": "Updates Inventory SKU-702: opening, paste, recounting, and committing count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                22,
+                74,
+                100,
+                119
+            ],
+            "reasoning": "Updates Inventory SKU-703: opening, paste, recounting, and committing count."
+        },
+        {
+            "routine_name": "Update Inventory",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                27,
+                28,
+                52,
+                80,
+                121
+            ],
+            "reasoning": "Updates Inventory SKU-704: multiple openings, paste, recounting, and committing count."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 1,
+            "assigned_node_indices": [
+                24,
+                70,
+                92,
+                132
+            ],
+            "reasoning": "Generates Report 601: creation, paste, running, and exporting."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 2,
+            "assigned_node_indices": [
+                37,
+                41,
+                88,
+                126,
+                127
+            ],
+            "reasoning": "Generates Report 602: creation, paste, running, and multiple exports."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 3,
+            "assigned_node_indices": [
+                14,
+                15,
+                51,
+                84,
+                133
+            ],
+            "reasoning": "Generates Report 603: multiple creations, paste, running, and exporting."
+        },
+        {
+            "routine_name": "Generate Report",
+            "execution_index": 4,
+            "assigned_node_indices": [
+                33,
+                39,
+                105,
+                125
+            ],
+            "reasoning": "Generates Report 604: creation, paste, running, and exporting."
+        }
+    ],
+    "5a0e92a37b1d49b1914b72359e662fa5": [],
+    "57ef0348d8cad222830f80ea5c9754a0": {
+        "reasoning": "Node 0 opens the browser to the application's base URL, which is a global prerequisite for any routine. Node 1 navigates to the authentication page and Node 2 performs the login action; both are classic globally shared setup steps. Nodes 3-38 are specific actions within various business routines (billing, support, finance, HR) as indicated by their specific URLs, button texts, and clipboard content (e.g., 'REF-801', 'TKT-901', 'INV-501', 'EMP-301'). Nodes 39-47 are specific actions within the warehouse routine as indicated by their specific URLs and tag_innerText values (e.g., 'SKU-701'). Node 48 performs a 'Clear Session' action, which is a global post-requisite, cleaning up the overall session regardless of which specific routine was performed. Node 49 navigates to the '/logout' endpoint, which is a classic global teardown action, ending the entire session.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            48,
+            49
+        ]
+    },
+    "9075553d1758149eabca79da2598d7e2": [],
+    "d6697ad2f90b8087b1d0de6836b01895": {
+        "reasoning": "Node 0 (open browser) and Node 1 (navigateTo auth) are global prerequisites for starting the session, as every routine would depend on the browser being open and navigating to the authentication page. Node 2 (click Login) is part of the global authentication process that every routine depends on. Nodes 3-47 are routine-specific actions related to billing refunds, support tickets, finance invoices, HR employees, and warehouse stock, identified by their specific URLs or payload like 'New Refund', 'TKT-901', 'INV-501', 'EMP-301', 'SKU-701'. Node 48 (Clear Session) is a global teardown step performed once at the very end to clean up the overall session state. Node 49 (navigateTo logout) is the final global teardown step, ending the entire session.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            48,
+            49
+        ]
+    },
+    "d881e9ccf3f5cb14a047514a10ca6484": [],
+    "949aa2317f802920fff94515ceee23a6": {
+        "reasoning": "Node 0 (open browser), Node 1 (navigate to auth), and Node 2 (login) represent the initial setup phase, essential for accessing the application for any subsequent routine. They are generic prerequisites and do not carry routine-specific payload. Nodes 3-47 are routine-specific actions related to billing, support, finance, HR, and warehouse, often involving specific IDs (REF-801, TKT-901, INV-501, EMP-301, SKU-701, etc.) or specific functions within a module (e.g., 'New Refund', 'Resolve', 'Open Invoice', 'Add Employee', 'Stock SKU'). These are clearly part of individual business processes, not global boundaries. Node 48 ('Clear Session') is a global cleanup action performed once at the very end to ensure a clean slate, making it a global teardown boundary. Node 49 (navigate to logout) is the final action to end the entire session, which is also a global teardown boundary.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            48,
+            49
+        ]
+    },
+    "029d82e439b7cd09bea6b32c2b952e71": [
+        48,
+        49
+    ],
+    "1a8ad77d21734c72675349252d6fd970": {
+        "reasoning": "Node 0 (open browser), Node 1 (navigateTo auth page), and Node 2 (click Login button) are all generic initial steps required to access the application, making them global setup boundaries. Nodes 3 through 47 are specific actions within various business routines (billing, support, finance, HR, warehouse) involving specific data, specific internal pages, or specific button clicks that initiate routine-specific processes. These are not shared globally. Node 48 (Clear Session) is a general session cleanup step performed once at the end of the entire session, thus a global teardown boundary. Node 49 (navigateTo logout page) is the final action to log out and end the session, making it a global teardown boundary.",
+        "shared_indices": [
+            0,
+            1,
+            2,
+            48,
+            49
+        ]
+    },
+    "41d23ce245581c4b7a5e91f0554b5168": [
+        0,
+        1,
+        66,
+        67,
+        68
+    ],
+    "a49e5a36f5cfc024d9a59302c76edcda": {
+        "reasoning": "Node 0 (Launch Workspace) is a global prerequisite, opening the overarching Citrix environment that all subsequent applications depend on. Node 1 (typeText VPN Token) is an authentication/login step, which is a classic global setup boundary for the entire session. Nodes 2-5 are the first steps of specific routines (CardTool, Excel, Chrome/recon, Chrome/loans) as they contain routine-specific payload (e.g., 'New Card', 'New Row', specific URL sections like '/recon' or '/loans'). These actions indicate the start of individual processes rather than global setup. Nodes 6-65 continue with various routine-specific actions, manipulating specific data or navigating to specific application sections. Node 66 (Save Audit Log) is a common cleanup action that occurs at the end of a session, indicating a global post-requisite. Node 67 (Lock Workstation) is a system-level security action that would typically be performed at the end of a session, making it a global teardown. Node 68 (Close Workspace) is the final action to close the main application environment, serving as the ultimate global teardown step for the entire session.",
+        "shared_indices": [
+            0,
+            1,
+            66,
+            67,
+            68
+        ]
+    }
+}

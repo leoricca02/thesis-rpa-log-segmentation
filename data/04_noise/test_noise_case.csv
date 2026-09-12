@@ -1,0 +1,20 @@
+timestamp;application;event_type;category;browser_url;tag_innerText;user;id;screenshot;window_size
+2026-05-17T10:00:00.000;Chrome;navigateTo;Browser;https://crm.internal.com/auth;;user1;1;img1.png;1920x1080
+2026-05-17T10:00:02.150;Chrome;mouseMove;System;;;user1;2;img2.png;1920x1080
+2026-05-17T10:00:03.420;Chrome;mouseHover;System;;;user1;3;img3.png;1920x1080
+2026-05-17T10:00:05.105;Chrome;click;Button;;Process Refund;user1;4;img4.png;1920x1080
+2026-05-17T10:00:08.890;Chrome;typeText;Input;;Order123;user1;5;img5.png;1920x1080
+2026-05-17T10:00:10.222;Chrome;scroll;System;;;user1;6;img6.png;1920x1080
+2026-05-17T10:00:14.305;Chrome;click;Button;;Ticket Update;user1;7;img7.png;1920x1080
+2026-05-17T10:00:18.901;Chrome;typeText;Input;;Resolved;user1;8;img8.png;1920x1080
+2026-05-17T10:00:20.005;Chrome;windowFocus;System;;;user1;9;img9.png;1920x1080
+2026-05-17T10:00:22.450;Chrome;mouseMove;System;;;user1;10;img10.png;1920x1080
+2026-05-17T10:00:28.115;Chrome;click;Button;;Process Refund;user1;11;img11.png;1920x1080
+2026-05-17T10:00:32.600;Chrome;typeText;Input;;Order456;user1;12;img12.png;1920x1080
+2026-05-17T10:00:34.050;Chrome;resizeWindow;System;;;user1;13;img13.png;1024x768
+2026-05-17T10:00:36.120;Chrome;mouseHover;System;;;user1;14;img14.png;1024x768
+2026-05-17T10:00:40.888;Chrome;click;Button;;Ticket Update;user1;15;img15.png;1024x768
+2026-05-17T10:00:45.333;Chrome;typeText;Input;;Pending;user1;16;img16.png;1024x768
+2026-05-17T10:00:48.111;Chrome;scroll;System;;;user1;17;img17.png;1024x768
+2026-05-17T10:00:50.999;Chrome;mouseMove;System;;;user1;18;img18.png;1024x768
+2026-05-17T10:00:55.755;Chrome;navigateTo;Browser;https://crm.internal.com/logout;;user1;19;img19.png;1024x768
