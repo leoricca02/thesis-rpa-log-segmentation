@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -23,7 +24,10 @@ load_dotenv()
 # Model is env-driven so swapping (e.g. to gemini-2.5-flash-lite for a high-RPD
 # stress run) needs no code change.
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-DEFAULT_LOG_FILE = "test_noise_case.csv"
+# Default sample log, resolved against the repository root (this file lives in
+# src/) so it works regardless of the directory the script is launched from.
+_DEFAULT_LOG_RELPATH = "data/04_noise/test_noise_case.csv"
+DEFAULT_LOG_FILE = str(Path(__file__).resolve().parent.parent / _DEFAULT_LOG_RELPATH)
 
 
 def _prompt_positive_int(message: str) -> int:
@@ -120,7 +124,7 @@ def _parse_args() -> argparse.Namespace:
         "csv_path",
         nargs="?",
         default=DEFAULT_LOG_FILE,
-        help=f"Path to the input CSV (default: {DEFAULT_LOG_FILE}).",
+        help=f"Path to the input CSV (default: {_DEFAULT_LOG_RELPATH}).",
     )
     parser.add_argument(
         "--no-relevance-filter",

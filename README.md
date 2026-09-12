@@ -233,10 +233,15 @@ thesis_project/
 └── README.md
 ```
 
-> **Note on the layout.** Source files were relocated into `src/` **without a single line
-> of code being modified**. `pytest.ini` declares `pythonpath = src`, so the test suite
-> imports `data_pipeline`, `phase1_boundary_reasoning`, … by plain module name exactly as
-> it did when everything sat in the project root.
+> **Note on the layout.** Source files were relocated into `src/` with no change to any
+> logic. `pytest.ini` declares `pythonpath = src`, so the test suite imports
+> `data_pipeline`, `phase1_boundary_reasoning`, … by plain module name exactly as it did
+> when everything sat in the project root. The only line touched in the sources was the
+> default sample-log path in `main.py`, updated to point at the file's new location.
+>
+> The move is verified end to end: replaying the reference run against the committed
+> response cache reproduces `results/Final_Segmented_Master_Log.xlsx` and its routing JSON
+> identically, with zero network calls.
 
 ---
 
@@ -310,10 +315,9 @@ GEMINI_MODEL=gemini-2.5-flash
 python src/main.py data/04_noise/test_noise_case.csv
 ```
 
-> Always pass the log path explicitly. `main.py` keeps a legacy default filename
-> (`test_noise_case.csv`, expected in the working directory) that predates this layout;
-> the argument is not optional in practice. The source was left untouched on purpose —
-> the code behind the thesis results is exactly the code that produced them.
+> The path argument is optional: omitted, it defaults to
+> `data/04_noise/test_noise_case.csv`, resolved against the repository root so it works
+> from any working directory.
 
 The wizard asks for the routines and their execution counts, then the pipeline runs
 end to end. Two files are written **to the current working directory**:
