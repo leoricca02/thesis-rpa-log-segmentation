@@ -25,6 +25,8 @@ env/
 # Excel lock files
 ~$*.xlsx
 
-# OS
+# OS / cloud sync
 .DS_Store
 Thumbs.db
+.tmp.driveupload/
+.tmp.drivedownload/
