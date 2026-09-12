@@ -310,6 +310,11 @@ GEMINI_MODEL=gemini-2.5-flash
 python src/main.py data/04_noise/test_noise_case.csv
 ```
 
+> Always pass the log path explicitly. `main.py` keeps a legacy default filename
+> (`test_noise_case.csv`, expected in the working directory) that predates this layout;
+> the argument is not optional in practice. The source was left untouched on purpose —
+> the code behind the thesis results is exactly the code that produced them.
+
 The wizard asks for the routines and their execution counts, then the pipeline runs
 end to end. Two files are written **to the current working directory**:
 
