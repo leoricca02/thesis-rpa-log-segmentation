@@ -523,5 +523,5 @@ live call — which is the point: the cache can never mask a change.
 ---
 
 <div align="center">
-<sub>Thesis project · <!-- TODO: university, year --> · Segmenting interleaved RPA UI logs with generative LLMs</sub>
+<sub>Master thesis · Sapienza Università di Roma, 2026 · Segmenting interleaved RPA UI logs with generative LLMs</sub>
 </div>
