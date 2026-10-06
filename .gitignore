@@ -30,3 +30,9 @@ env/
 Thumbs.db
 .tmp.driveupload/
 .tmp.drivedownload/
+
+# Demo UI runtime state (live runs, uploads, local response cache).
+# Curated recordings under ui/recordings/ are meant to be committed.
+ui/runs/
+ui/uploads/
+ui/.cache/

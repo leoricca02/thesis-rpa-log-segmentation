@@ -7,7 +7,7 @@ log into discrete robot executions — including when routines *share* actions o
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Gemini](https://img.shields.io/badge/LLM-Gemini%203.5%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/tests-40%20passing-2CA02C)](#11-testing)
+[![Tests](https://img.shields.io/badge/tests-47%20passing-2CA02C)](#11-testing)
 [![Case](https://img.shields.io/badge/benchmark-Case%203.4%20%2B%20partial%20sharing-8C564B)](#5-the-case-study)
 
 </div>
@@ -141,7 +141,9 @@ flowchart TD
 │   ├── phase1_repeat.py              # Repeatability harness for Phase 1  (thesis 7.4)
 │   └── phase2_repeat.py              # Repeatability harness for Phase 2  (thesis 7.3)
 │
-├── tests/                            # 40 pytest cases — fully offline
+├── ui/                               # Demo UI for the defence — see ui/README.md
+│
+├── tests/                            # 47 pytest cases — fully offline
 │
 ├── data/
 │   ├── case_study/                   # The two logs of thesis Table 6.2
@@ -221,6 +223,14 @@ python src/analyze_telemetry.py results/case_study/token_telemetry.csv
 
 The wizard asks for the routine names and execution counts. Output lands in the **current working
 directory**: the colour-coded workbook and the routing audit JSON.
+
+**Demo UI.** The same pipeline also runs in the browser, phase by phase, with the model's
+reasoning, an interactive topology review and replayable recordings — see [`ui/README.md`](ui/README.md):
+
+```bash
+pip install -r ui/requirements.txt
+python ui/server.py        # http://127.0.0.1:8000
+```
 
 ---
 
@@ -333,11 +343,12 @@ the diverted node ids. The audit trail behind the workbook.
 pytest
 ```
 
-**40 tests, no network access.** `SmartLLMClient` exposes an injectable transport and sleep
+**47 tests, no network access.** `SmartLLMClient` exposes an injectable transport and sleep
 function, so retry on 429/5xx, exhaustion, malformed envelopes, blocked prompts, fenced JSON,
 cache hits and telemetry rows are all exercised deterministically against a fake transport. The
 phase tests drive the pipeline with a scripted stub client that records the prompts it received,
-so prompt construction itself is under test.
+so prompt construction itself is under test. The UI tests replay the committed case-study
+artefacts through the UI's runner and check that it reproduces the thesis segmentation.
 
 ---
 
