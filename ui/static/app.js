@@ -1,12 +1,12 @@
 /* RPA Log Segmentation — demo UI.
  * Vanilla JS, no build step. The backend streams pipeline events over SSE;
- * this file turns them into the four views: Input → Oracle → Pipeline → Result.
+ * this file turns them into the four views: Input → Routines → Pipeline → Result.
  */
 "use strict";
 
 // ------------------------------------------------------------------ constants
-const VIEWS = ["input", "oracle", "pipeline", "result"];
-const VIEW_LABELS = { input: "Input log", oracle: "Oracle", pipeline: "Pipeline", result: "Result" };
+const VIEWS = ["input", "routines", "pipeline", "result"];
+const VIEW_LABELS = { input: "Input log", routines: "Routines", pipeline: "Pipeline", result: "Result" };
 
 const PHASES = [
   { id: "load", code: "IN", title: "Ingestion", kind: "local",
@@ -27,14 +27,14 @@ const PHASES = [
   { id: "0A2", code: "0A-2", title: "Relevance tagging", kind: "llm",
     desc: "Given the declared routine names, the model flags events that belong to none of them — a genuine click, but in an unrelated application. A payload guard protects any event carrying a distinctive token.",
     policy: "Tagged events are diverted to the Noise sheet for review, never deleted. Fail-open." },
-  { id: "1", code: "1", title: "Sharing topology", kind: "llm",
+  { id: "1", code: "1", title: "Shared actions", kind: "llm",
     desc: "For every shared action — login, module openers, logout — the model infers which subset of routines depends on it. Assumption A1′: an action may be shared by any subset, not only by all routines. Reasoning is written before the answer.",
     policy: "Fail-fast on an API error. Hallucinated node ids and unknown routine names are dropped." },
   { id: "review", code: "H", title: "Human review", kind: "human",
     desc: "The operator inspects the inferred subsets and approves or edits them before Phase 2 spends tokens on them.",
     policy: "Supervised fallback — the CLI's --review flag." },
   { id: "2", code: "2", title: "Execution routing", kind: "llm",
-    desc: "The remaining events are distributed into exactly the execution buckets the Oracle declared: routine meaning decides which routine, payload continuity decides which execution. The result is validated as a cover, and each trace receives only the shared actions its subset allows.",
+    desc: "The remaining events are distributed into exactly the execution buckets you declared: routine meaning decides which routine, payload continuity decides which execution. The result is validated as a cover, and each trace receives only the shared actions its subset allows.",
     policy: "A node in two executions aborts the run; a node routed nowhere goes to the Noise sheet." },
 ];
 const PHASE_BY_ID = Object.fromEntries(PHASES.map((p) => [p.id, p]));
@@ -47,6 +47,12 @@ const CASE_STUDY_ROUTINES = [
 const MAX_ROUTINES = 8;
 
 // ---------------------------------------------------------------------- state
+// Only `review` is a visible choice; the other options are fixed for every live run.
+// No cache reuse: every call is a fresh inference, so the model's thinking is always shown.
+function defaultOptions(model = "") {
+  return { review: true, relevance_filter: true, include_thoughts: true, use_cache: false, model };
+}
+
 const S = {
   view: "input",
   maxView: 0,
@@ -57,7 +63,7 @@ const S = {
   source: null,       // {kind: 'sample'|'upload'|'recording', id}
   recording: null,    // recording details when replaying
   routines: [{ name: "", executions: 1 }],
-  options: { review: true, relevance_filter: true, include_thoughts: true, use_cache: true, model: "" },
+  options: defaultOptions(),
   run: null,
   focus: null,
   follow: true,
@@ -176,7 +182,7 @@ function go(view) {
   S.maxView = Math.max(S.maxView, idx);
   for (const v of VIEWS) $(`#view-${v}`).hidden = v !== view;
   renderStepper();
-  if (view === "oracle") renderOracle();
+  if (view === "routines") renderRoutines();
   if (view === "pipeline") renderPipeline();
   if (view === "result") renderResult();
   scrollTo({ top: 0, behavior: "smooth" });
@@ -302,7 +308,7 @@ function setLog(preview, source) {
     S.recording = null;
     if (wasRecording) {
       S.routines = [{ name: "", executions: 1 }];
-      S.options.model = S.status.model;
+      S.options = defaultOptions(S.status.model);
     }
   }
   S.maxView = 0;
@@ -356,7 +362,7 @@ function renderPreview() {
     h("div", { class: "table-wrap" },
       h("table", {}, h("thead", {}, h("tr", {}, h("th", { class: "num" }, "#"), h("th", {}, "Time"), h("th", {}, "App"), h("th", {}, "Event"), h("th", {}, "Content"))), tbody)),
     h("div", { class: "preview-actions" },
-      h("button", { class: "btn primary", onclick: () => go("oracle") }, "Continue to the Oracle →")),
+      h("button", { class: "btn primary", onclick: () => go("routines") }, "Continue to the routines →")),
   );
 }
 
@@ -380,10 +386,10 @@ dz.addEventListener("drop", (e) => {
 });
 $("#fileInput").addEventListener("change", (e) => { if (e.target.files[0]) uploadFile(e.target.files[0]); e.target.value = ""; });
 
-// =============================================================== 2 · ORACLE
+// =============================================================== 2 · ROUTINES
 const isReplay = () => S.source && S.source.kind === "recording";
 
-function renderOracle() {
+function renderRoutines() {
   const replay = isReplay();
   const list = $("#routineList");
   list.innerHTML = "";
@@ -399,13 +405,13 @@ function renderOracle() {
         h("div", {}, h("div", { class: "rname-label" }, `Routine ${i + 1}`), input),
         h("div", { class: "counter-wrap" },
           h("div", { class: "counter" },
-            h("button", { disabled: replay, "aria-label": "Fewer executions", onclick: () => { r.executions = Math.max(1, r.executions - 1); renderOracle(); } }, "−"),
+            h("button", { disabled: replay, "aria-label": "Fewer executions", onclick: () => { r.executions = Math.max(1, r.executions - 1); renderRoutines(); } }, "−"),
             h("span", { class: "val" }, r.executions),
-            h("button", { disabled: replay, "aria-label": "More executions", onclick: () => { r.executions = Math.min(50, r.executions + 1); renderOracle(); } }, "+")),
+            h("button", { disabled: replay, "aria-label": "More executions", onclick: () => { r.executions = Math.min(50, r.executions + 1); renderRoutines(); } }, "+")),
           h("span", { class: "counter-label" }, r.executions === 1 ? "execution" : "executions")),
         h("button", {
           class: "remove-btn", title: "Remove routine", disabled: replay || S.routines.length === 1,
-          onclick: () => { S.routines.splice(i, 1); renderOracle(); },
+          onclick: () => { S.routines.splice(i, 1); renderRoutines(); },
         }, "✕"))
     );
   });
@@ -420,35 +426,26 @@ function renderOracle() {
 
 $("#addRoutine").addEventListener("click", () => {
   if (S.routines.length < MAX_ROUTINES) S.routines.push({ name: "", executions: 1 });
-  renderOracle();
+  renderRoutines();
   const inputs = document.querySelectorAll("#routineList input.name");
   inputs[inputs.length - 1]?.focus();
 });
 $("#fillCaseStudy").addEventListener("click", () => {
   S.routines = CASE_STUDY_ROUTINES.map((r) => ({ ...r }));
-  renderOracle();
+  renderRoutines();
 });
 
 function renderOptions() {
   const replay = isReplay();
   const box = $("#options");
   box.innerHTML = "";
-  const opts = [
-    ["review", "Human review of the topology", "Pause after Phase 1 to approve or edit the inferred sharing subsets."],
-    ["relevance_filter", "Relevance tagging (0A-2)", "Divert events unrelated to the declared routines to a Noise sheet."],
-    ["include_thoughts", "Gemini thought summaries", "Show the model's own summary of its thinking on Phases 1 and 2."],
-    ["use_cache", "Reuse cached responses", "Replay identical earlier calls, including the thesis cache. Off: every call is a fresh inference."],
-  ];
-  for (const [key, title, desc] of opts) {
-    const input = h("input", { type: "checkbox", disabled: replay, onchange: (e) => { S.options[key] = e.target.checked; } });
-    input.checked = !!S.options[key];
-    box.append(h("label", { class: "option" },
-      h("div", {}, h("div", { class: "option-title" }, title), h("div", { class: "option-desc" }, desc)),
-      h("span", { class: "switch" }, input, h("span"))));
-  }
-  box.append(h("div", { class: "option" },
-    h("div", {}, h("div", { class: "option-title" }, "Model"), h("div", { class: "option-desc" }, "Any Gemini model id (2.5 or 3.x).")),
-    h("input", { class: "text-input", value: S.options.model, disabled: replay, size: 18, oninput: (e) => { S.options.model = e.target.value; } })));
+  const input = h("input", { type: "checkbox", disabled: replay, onchange: (e) => { S.options.review = e.target.checked; } });
+  input.checked = !!S.options.review;
+  box.append(h("label", { class: "option" },
+    h("div", {},
+      h("div", { class: "option-title" }, "Human review of the shared actions"),
+      h("div", { class: "option-desc" }, "Pause after Phase 1 to approve or edit which routines share each action.")),
+    h("span", { class: "switch" }, input, h("span"))));
 }
 
 function renderRunSummary() {
@@ -765,7 +762,7 @@ function renderPhaseDetail() {
     box.append(h("div", { class: "section note" }, "Waiting for the earlier phases."));
   } else if (ph.status === "skipped") {
     box.append(h("div", { class: "section note" }, pid === "review"
-      ? "Human review is off for this run: the inferred topology goes straight to Phase 2."
+      ? "Human review is off for this run: the inferred shared actions go straight to Phase 2."
       : "This phase is disabled for this run."));
   }
 
@@ -826,7 +823,7 @@ function renderCall(pid, call) {
     box.append(h("div", { class: "note" }, call.message || "The call failed."));
   } else {
     const why = call.cached && !lowThinking
-      ? "Cached response: replayed without a new inference, and no thought summary was stored for it. Turn off “Reuse cached responses” to see the model think."
+      ? "Cached response: replayed without a new inference, and no thought summary was stored for it."
       : lowThinking ? "Thinking is off for this phase — a simple classification task, so the pipeline gives it no thinking budget. The answer is below."
         : S.run.start?.options?.include_thoughts === false ? "Thought summaries are off for this run."
           : "The model returned no thought summary for this call.";
@@ -968,9 +965,10 @@ const PHASE_RENDERERS = {
         typewriter(`${R.id}-1-reasoning`, data.reasoning, "reasoning")));
     }
     const routines = (R.start?.routines || []).map((r) => r.routine_name);
-    out.append(section(`Inferred sharing topology · ${data.topology.length} shared action(s)`
+    const shared = data.topology.filter((a) => a.shared_with.length > 1);
+    out.append(section(`Inferred shared actions · ${shared.length}`
       + (data.proposed > data.topology.length ? ` (${data.proposed} proposed, sanitised)` : ""),
-      topologyMatrix(data.topology, routines, { justify: true })));
+      topologyMatrix(shared, routines, { justify: true })));
     return out;
   },
 
@@ -983,7 +981,7 @@ const PHASE_RENDERERS = {
       out.append(h("div", { class: "review-banner", html: ICON.hand },));
       out.lastChild.append(h("div", {},
         h("strong", {}, rv.replay ? "Recorded review step. " : "Your turn. "),
-        rv.replay ? "In the recorded run the operator reviewed this topology here. Continue to replay their decision."
+        rv.replay ? "In the recorded run the operator reviewed these shared actions here. Continue to replay their decision."
           : "Each row is an action performed once that several executions rely on. Toggle which routines depend on it, or clear a row to make it an ordinary step."));
     }
     const resolved = rv.resolved;
@@ -999,7 +997,11 @@ const PHASE_RENDERERS = {
       }
     }
     const editable = !resolved && !rv.replay && !rv.submitted;
-    out.append(topologyMatrix(resolved ? mergeRemoved(rv.topology, topo) : rv.topology, routines, {
+    // Actions Phase 1 gave to a single routine are not shown: they are not shared
+    // actions. They are still sent back unchanged, so Phase 2 handles them as inferred.
+    const isShared = (a) => rv.orig[a.node_id].size > 1;
+    const rows = (resolved ? mergeRemoved(rv.topology, topo) : rv.topology).filter(isShared);
+    out.append(topologyMatrix(rows, routines, {
       justify: true, editable, sel: resolved ? null : rv.sel, editedCells,
       onToggle: (nid, r) => {
         const set = rv.sel[nid];
@@ -1034,6 +1036,7 @@ const PHASE_RENDERERS = {
 
   "2"(data, R) {
     const routines = (R.start?.routines || []).map((r) => r.routine_name);
+    const sharedIds = new Set(sharedActions(R).map((a) => a.node_id));
     const out = h("div", {});
     out.append(section("One reasoning note per execution",
       h("div", { class: "exec-reasons" }, data.traces.map((t, i) => {
@@ -1041,7 +1044,7 @@ const PHASE_RENDERERS = {
         return h("div", { class: "exec-reason", style: { borderLeftColor: seriesVar(k), animationDelay: `${i * 80}ms` } },
           h("b", {}, `${t.routine} · execution ${t.execution}`),
           t.reasoning || h("span", { class: "note" }, "No reasoning returned."),
-          h("div", { class: "n" }, `${t.nodes.length} events · ${t.shared.length} shared`));
+          h("div", { class: "n" }, `${t.nodes.length} events · ${t.shared.filter((n) => sharedIds.has(n)).length} shared`));
       }))));
     out.append(section("Validation", checksList(data.checks)));
     return out;
@@ -1109,14 +1112,18 @@ function checksList(checks) {
 }
 
 // =============================================================== 4 · RESULT
+// A shared action is one that more than one routine depends on. An action Phase 1
+// assigns to a single routine (e.g. 1/4) is shown throughout the UI as an ordinary step.
+const sharedActions = (R) => (R.topology || []).filter((a) => a.shared_with.length > 1);
+
 function renderResult() {
   const R = S.run;
   if (!R || !R.result) return;
   const res = R.result;
   const routines = (R.start.routines || []).map((r) => r.routine_name);
-  const shared = (R.topology || []).length;
+  const shared = sharedActions(R).length;
   const routed = new Set();
-  const sharedIds = new Set((R.topology || []).map((a) => a.node_id));
+  const sharedIds = new Set(sharedActions(R).map((a) => a.node_id));
   for (const t of res.traces) for (const n of t.nodes) if (!sharedIds.has(n)) routed.add(n);
   const passed = res.checks.filter((c) => c.status === "pass").length;
 
@@ -1146,7 +1153,7 @@ function renderResult() {
   renderNoise();
   const topo = $("#topologyResult");
   topo.innerHTML = "";
-  topo.append(topologyMatrix(R.topology || [], routines, { justify: true }));
+  topo.append(topologyMatrix(sharedActions(R), routines, { justify: true }));
 }
 
 async function saveRecording() {
@@ -1200,7 +1207,7 @@ function renderUntangle(animate) {
   // Lane membership per node.
   const lanes = {};
   res.traces.forEach((t, i) => t.nodes.forEach((n) => (lanes[n] ||= []).push(i)));
-  const sharedIds = new Set((R.topology || []).map((a) => a.node_id));
+  const sharedIds = new Set(sharedActions(R).map((a) => a.node_id));
   const noise = new Set(res.noise);
   const dots = [];
 
@@ -1223,7 +1230,7 @@ function renderUntangle(animate) {
     const where = ls.map((i) => `${res.traces[i].routine} · exec ${res.traces[i].execution}`).join("<br>");
     ls.forEach((li, j) => dots.push({
       x, lane: li, noise: false, shared: isShared, first: j === 0,
-      tip: tipBase + `<div class="tt-sub" style="margin-top:6px">${isShared ? `Shared action → ${ls.length} traces:` : "Execution:"}<br>${where}</div>`,
+      tip: tipBase + `<div class="tt-sub" style="margin-top:6px">${isShared ? `Shared action → ${ls.length} traces:` : ls.length > 1 ? "Executions:" : "Execution:"}<br>${where}</div>`,
     }));
   }
 
@@ -1303,7 +1310,7 @@ function renderTraces() {
   });
   const t = res.traces[S.activeTrace] || res.traces[0];
   const k = routines.indexOf(t.routine);
-  const subsetSize = Object.fromEntries((R.topology || []).map((a) => [a.node_id, a.shared_with.length]));
+  const subsetSize = Object.fromEntries(sharedActions(R).map((a) => [a.node_id, a.shared_with.length]));
   const detail = $("#traceDetail");
   detail.innerHTML = "";
   detail.append(h("div", { class: "quote", style: { borderLeftColor: seriesVar(k) } },

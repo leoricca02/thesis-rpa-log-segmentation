@@ -13,7 +13,7 @@ Under H1' (Subset Sharing) the unit of validation becomes a COVER:
         trace, and a shared node appears in exactly the traces whose routine
         is in its subset. Nothing is ever dropped or smuggled.
   SOFT CHECKS (warning, output still produced):
-    S1. The number of executions per routine matches the Oracle.
+    S1. The number of executions per routine matches the declaration.
     S2. Every routine receives at least one shared action (a routine with no
         setup at all is suspicious and worth operator review).
     S3. Duplicate (routine, execution_index) pairs are de-collided with a
@@ -76,7 +76,7 @@ def _trace_color(routine_index: int, exec_index: int, exec_total: int) -> str:
 
 
 def _build_routing_prompt(routine_constraints: list[dict[str, Any]]) -> str:
-    """Compose the system prompt, embedding the Oracle execution buckets."""
+    """Compose the system prompt, embedding the declared execution buckets."""
     blocks = ["You must distribute the nodes into EXACTLY these execution blocks:"]
     for r in routine_constraints:
         blocks.append(
@@ -160,7 +160,7 @@ def _canonical_block_names(
     """P2: map each block's routine name onto a declared name (or fail).
 
     Returns the list of canonical names (parallel to routing_plan), or None if
-    any block names a routine the Oracle never declared.
+    any block names a routine that was never declared.
     """
     canonical: list[str] = []
     for block in routing_plan:
@@ -176,7 +176,7 @@ def _canonical_block_names(
     return canonical
 
 
-def _check_oracle_counts(
+def _check_declared_counts(
     block_names: list[str], routine_constraints: list[dict[str, Any]]
 ) -> list[str]:
     """S1: did the LLM produce the requested executions per routine?"""
@@ -230,7 +230,7 @@ def generate_segmented_log(
         df: DataFrame with 'node_id' and 'llm_narrative' columns.
         sharing_topology: Phase 1 output — list of dicts with 'node_id',
             'shared_with' (list of declared routine names), 'justification'.
-        routine_constraints: Oracle constraints, each a dict with
+        routine_constraints: Declared routines, each a dict with
             'routine_name' and 'executions'.
         model_name: Gemini model identifier.
         output_file: Destination .xlsx path.
@@ -333,7 +333,7 @@ def generate_segmented_log(
         return False
 
     # ---- S1 / S2 soft checks ----
-    for warning in _check_oracle_counts(block_names, routine_constraints):
+    for warning in _check_declared_counts(block_names, routine_constraints):
         print(f"[SOFT WARNING] {warning}")
     for warning in _check_topology_reach(sharing_topology, routine_constraints):
         print(f"[SOFT WARNING] {warning}")

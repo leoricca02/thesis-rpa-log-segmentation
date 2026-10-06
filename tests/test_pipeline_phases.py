@@ -288,7 +288,7 @@ def test_phase2_hard_abort_on_undeclared_routine_name(tmp_path):
 def test_phase2_hard_abort_when_shared_node_unreachable(tmp_path):
     """A shared node whose subset's routine produced no blocks must abort.
 
-    Oracle declares Task B, but the LLM only produced Task A blocks and the
+    The human declares Task B, but the LLM only produced Task A blocks and the
     topology has a node shared exclusively with Task B -> that node would
     appear in no trace -> P3 cover violation.
     """

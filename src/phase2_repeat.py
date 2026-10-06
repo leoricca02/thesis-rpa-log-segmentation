@@ -96,7 +96,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("n_runs", type=int, help="How many times to repeat Phase 2.")
     parser.add_argument(
         "constraints",
-        help='Oracle constraints, e.g. "Task A:2,Task B:3".',
+        help='Declared routines, e.g. "Task A:2,Task B:3".',
     )
     parser.add_argument(
         "--truth",

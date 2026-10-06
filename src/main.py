@@ -56,7 +56,7 @@ def _prompt_positive_int(message: str) -> int:
 
 
 def run_human_in_the_loop_wizard() -> list[dict[str, object]]:
-    """Collect Oracle constraints (routine names + execution counts).
+    """Collect the routine declaration (routine names + execution counts).
 
     Returns:
         A list of dicts, each with 'routine_name' and 'executions'.

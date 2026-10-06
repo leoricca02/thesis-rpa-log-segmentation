@@ -68,7 +68,7 @@ class RunRequest(BaseModel):
     review: bool = True
     relevance_filter: bool = True
     include_thoughts: bool = True
-    use_cache: bool = True
+    use_cache: bool = False
 
 
 class ReviewDecision(BaseModel):

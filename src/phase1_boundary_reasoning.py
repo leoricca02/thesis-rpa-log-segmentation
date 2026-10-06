@@ -11,7 +11,7 @@ routine names it is shared with. Full sharing is the special case where the
 subset equals all declared routines.
 
 Design choices (documented for the thesis):
-- The topology is INFERRED by the LLM (option "b"): the human Oracle still
+- The topology is INFERRED by the LLM (option "b"): the human still
   declares only routine names and execution counts; the model decides which
   shared action belongs to which routines, justifying each assignment via
   chain-of-thought. A supervised fallback ("c") is available in the
@@ -187,7 +187,7 @@ def infer_sharing_topology(
     Args:
         df: DataFrame with 'node_id' and 'llm_narrative' columns (as produced
             by ``load_and_serialize_smartrpa``).
-        routine_constraints: Oracle constraints, each a dict with
+        routine_constraints: Declared routines, each a dict with
             'routine_name' and 'executions'.
         model_name: Gemini model identifier.
         client: Optional shared SmartLLMClient.

@@ -36,7 +36,7 @@ from data_pipeline import (
 )
 from phase1_boundary_reasoning import infer_sharing_topology
 from phase2_execution_mapping import (
-    _check_oracle_counts,
+    _check_declared_counts,
     _check_topology_reach,
     generate_segmented_log,
 )
@@ -651,7 +651,7 @@ class LiveRun(Run):
         relevance -= set(subset_by_id)
         unrouted = sorted(set(noise_all) - relevance)
 
-        s1 = _check_oracle_counts(names, self.routines)
+        s1 = _check_declared_counts(names, self.routines)
         s2 = _check_topology_reach(topology, self.routines)
         checks = [
             {"id": "P1", "label": "Partition: every routable event in exactly one execution",
@@ -661,7 +661,7 @@ class LiveRun(Run):
              "status": "pass", "detail": ""},
             {"id": "P3", "label": "Cover: every event in a trace or in the Noise sheet",
              "status": "pass", "detail": ""},
-            {"id": "S1", "label": "Execution counts match the Oracle",
+            {"id": "S1", "label": "Execution counts match the declared routines",
              "status": "warn" if s1 else "pass", "detail": " ".join(s1)},
             {"id": "S2", "label": "Every routine receives at least one shared action",
              "status": "warn" if s2 else "pass", "detail": " ".join(s2)},

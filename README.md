@@ -59,7 +59,8 @@ action, *which routines share it*. A trace is then reassembled with exactly the 
 own subset entitles it to — no more, no less.
 
 The pipeline is **semi-supervised**. The human is never asked to label events, only to declare
-what should be there — the **Oracle constraint**, collected once by a wizard at startup:
+what should be there — the **routine declaration** (routine names and execution counts), collected
+once by a wizard at startup:
 
 ```
 How many distinct business routines are in this log? 4
@@ -120,7 +121,7 @@ flowchart TD
 | **0B-2** | Did pruning make distinct events serialise to identical text? The guard measures that collapse and restores the minimum set of columns that separates them again. | Local computation, no API call. |
 | **0A-2** | Given the declared routine names, which events belong to *none* of them? Catches noise that survives type-based filtering — a genuine click, but in an unrelated application. A **payload guard** protects any node carrying a distinctive token, so real payloads are never diverted. | **Fail-open** — on API error nothing is tagged. Tagged nodes are diverted for review, never deleted. |
 | **1** | For each candidate shared action, **which subset of routines** shares it? Reasoning is emitted before the answer, so the model commits to an argument before committing to a set. | **Fail-fast** on API error. Hallucinated node ids are dropped with a warning rather than treated as a crash. |
-| **2** | Distribute the remaining nodes into exactly the execution buckets the Oracle declared, using routine meaning for *which routine* and payload continuity for *which execution*. | **Layered** — a node in two executions is fatal (abort); a node routed nowhere is diverted to the Noise sheet; an Oracle-count mismatch is a warning that still produces output. |
+| **2** | Distribute the remaining nodes into exactly the execution buckets the human declared, using routine meaning for *which routine* and payload continuity for *which execution*. | **Layered** — a node in two executions is fatal (abort); a node routed nowhere is diverted to the Noise sheet; a mismatch with the declared execution counts is a warning that still produces output. |
 
 > **Nothing is ever silently lost.** Every input event ends up either in a reconstructed trace or
 > in the reviewable `Noise` sheet.
@@ -132,7 +133,7 @@ flowchart TD
 ```
 .
 ├── src/
-│   ├── main.py                       # Orchestrator, Oracle wizard, --review flow, CLI
+│   ├── main.py                       # Orchestrator, routine-declaration wizard, --review flow, CLI
 │   ├── data_pipeline.py              # Ingestion, Phase 0A / 0B / 0B-2 / 0A-2, serialisation
 │   ├── phase1_boundary_reasoning.py  # Phase 1 — sharing-topology inference (A1')
 │   ├── phase2_execution_mapping.py   # Phase 2 — subset-aware routing, validation, export
@@ -382,7 +383,7 @@ precisely to events that carry none — which is confirmation of the assumption 
 shortfall against it. A run that were flawless on a payload-less log would be the result worth
 distrusting.
 
-**The Oracle is required.** The number of executions is not recoverable from an interleaved log in
+**The routine declaration is required.** The number of executions is not recoverable from an interleaved log in
 the general case: two consecutive reimbursements and one reimbursement retried after an error are
 indistinguishable at the UI level. Supplying that count turns an ill-posed problem into a
 well-posed one, and it is knowledge an analyst already has. The count is enforced *softly* — a

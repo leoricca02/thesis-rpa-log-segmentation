@@ -69,16 +69,16 @@
       </div>
     </section>
 
-    <!-- ============================== 2 · ORACLE ============================= -->
-    <section class="view" id="view-oracle" hidden>
+    <!-- ============================== 2 · ROUTINES =========================== -->
+    <section class="view" id="view-routines" hidden>
       <div class="view-head">
-        <h1>Human-in-the-loop: the Oracle</h1>
+        <h1>Human-in-the-loop: declare the routines</h1>
         <p class="lead">You never label events. You only declare <strong>what should be there</strong> — which routines,
           and how many times each one was executed. Everything else is inferred.</p>
       </div>
-      <div class="grid-oracle">
+      <div class="grid-routines">
         <div class="card">
-          <div class="card-title">Declared routines <span class="hint" id="oracleSummary"></span></div>
+          <div class="card-title">Declared routines <span class="hint" id="routinesSummary"></span></div>
           <div id="routineList" class="routine-list"></div>
           <div class="row gap">
             <button class="btn ghost" id="addRoutine"><span class="plus">+</span> Add routine</button>
@@ -156,7 +156,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Sharing topology <span class="hint">assumption A1′ — each shared action serves a subset of routines</span></div>
+        <div class="card-title">Shared actions <span class="hint">assumption A1′ — each shared action serves a subset of two or more routines</span></div>
         <div id="topologyResult"></div>
       </div>
     </section>

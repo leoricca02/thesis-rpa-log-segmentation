@@ -6,7 +6,7 @@ model was asked, what it thought, what it answered and what the pipeline did
 with the answer.
 
 ```
-Input log  →  Oracle (human-in-the-loop)  →  Pipeline (live)  →  Result
+Input log  →  Routines (human-in-the-loop)  →  Pipeline (live)  →  Result
 ```
 
 ## Run it
@@ -24,17 +24,17 @@ recording needs no key and no network.
 | Screen | Content |
 | :-- | :-- |
 | **Input log** | Upload a SmartRPA CSV, or pick one of the logs under `data/`. Preview: event count, populated columns, applications, time span, and the raw interleaved sequence. |
-| **Oracle** | Declare routine names and execution counts — the only supervision the method needs. Options: human review of the topology, relevance tagging (0A-2), Gemini thought summaries, cache reuse, model id. |
+| **Routines** | Declare routine names and execution counts — the only supervision the method needs. The only visible option is the human review of the shared actions. Everything else is fixed for every live run: relevance tagging (0A-2) on, Gemini thought summaries on, no cache reuse (every call is a fresh inference), model from `GEMINI_MODEL` (default `gemini-3.5-flash`). |
 | **Pipeline** | A timeline of the phases (0A → 0B → 0B-2 → serialisation → 0A-2 → 1 → review → 2). For each phase: what it does and its failure policy, the model call (cache hit or live, thinking level, tokens, latency, full prompt), the model's thought summary, and the phase's own result. The pipeline's console output streams alongside. |
-| **Human review** | The inferred sharing topology as a matrix *shared action × routine*. Toggle cells to edit a subset, or turn an action into an ordinary step, then approve. Same semantics as the CLI's `--review`. |
-| **Result** | The "untangle" animation: every event leaves the interleaved line for the lane of its execution, shared actions are copied into every trace their subset allows, noise drops to its own lane. Then per-execution traces with the model's reasoning, the validation checks (P1–P3, S1–S3), the Noise sheet, the final topology, and downloads of the XLSX workbook and the JSON audit trail. |
+| **Human review** | The inferred shared actions as a matrix *shared action × routine*. Toggle cells to edit a subset, or turn an action into an ordinary step, then approve. Same semantics as the CLI's `--review`. |
+| **Result** | The "untangle" animation: every event leaves the interleaved line for the lane of its execution, shared actions are copied into every trace their subset allows, noise drops to its own lane. Then per-execution traces with the model's reasoning, the validation checks (P1–P3, S1–S3), the Noise sheet, the final shared actions, and downloads of the XLSX workbook and the JSON audit trail. |
 
 ## How "what the model thinks" is obtained
 
 Two sources, both shown:
 
 1. **The reasoning the pipeline already asks for.** Phase 1 writes its reasoning
-   before the topology and a justification for each shared action; Phase 2 writes
+   before its answer and a justification for each shared action; Phase 2 writes
    one reasoning note per execution. These are part of the schema-constrained
    JSON answer.
 2. **Gemini thought summaries.** With the option on, the UI's client
@@ -43,11 +43,10 @@ Two sources, both shown:
    and separates the thought parts from the JSON answer. Phases 0A, 0B and 0A-2
    run with no thinking budget, so they have no thoughts to show.
 
-The cache key of `SmartLLMClient` does not cover `includeThoughts`, so cached
-answers — including the committed thesis cache, which the UI reuses by default —
-are still hits. A cached answer replays without new thoughts unless the UI stored
-them when the call was first made; turn off **Reuse cached responses** to watch
-the model think on every call.
+A live run from the UI never reuses cached responses, the committed thesis cache
+included: every phase is a fresh inference, so Phases 1 and 2 always show the
+model's thought summary. Each run writes its own cache inside `ui/runs/<id>/`.
+The CLI and its committed cache are unaffected.
 
 ## Recordings and replay
 
@@ -72,11 +71,13 @@ it carries no thought summaries. For the defence, record a live run.
 
 1. Light or dark theme (toggle in the top bar); light usually reads better on a projector.
 2. **Input** → `caso_studio_trasferte_2exec.csv`; point at the interleaved ribbon.
-3. **Oracle** → "Use the case-study routines"; leave review and thought summaries on,
-   turn **Reuse cached responses** off so every phase is a real inference.
+3. **Routines** → "Use the case-study routines"; leave the human review of the shared actions on.
 4. **Pipeline** → follow the timeline; click a finished phase to go back to it.
-   In Phase 1 the thought summary and the reasoning appear above the topology.
-5. **Review** → explain the 4/4, 3/4, 2/4 and 1/4 subsets (assumption A1′); approve.
+   In Phase 1 the thought summary and the reasoning appear above the shared actions.
+5. **Review** → explain the 4/4, 3/4 and 2/4 subsets (assumption A1′); approve.
+   The UI lists as shared only actions that two or more routines depend on. An action
+   Phase 1 gives to a single routine is not shown in the review and appears in the
+   result as an ordinary step; it still reaches Phase 2 exactly as inferred.
 6. **Result** → "Untangle again" replays the animation.
 7. **Save as recording**, so the same run can be replayed during the discussion.
 
