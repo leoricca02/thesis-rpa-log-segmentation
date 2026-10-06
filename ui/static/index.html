@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RPA Log Segmentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23131829'/%3E%3Cpath d='M5 10c8 0 14 12 22 12M5 22c8 0 14-12 22-12' stroke='%233987e5' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+        <path d="M4 12 C 14 12, 18 28, 36 28" class="thread t1"/>
+        <path d="M4 20 C 14 20, 22 12, 36 12" class="thread t2"/>
+        <path d="M4 28 C 16 28, 20 20, 36 20" class="thread t3"/>
+      </svg>
+      <div>
+        <div class="brand-title">RPA Log Segmentation</div>
+        <div class="brand-sub">Shared-action routines · LLM pipeline</div>
+      </div>
+    </div>
+    <nav class="stepper" id="stepper" aria-label="Progress"></nav>
+    <div class="topbar-right">
+      <span class="badge" id="modeBadge" hidden></span>
+      <span class="badge subtle" id="modelBadge"></span>
+      <button class="icon-btn" id="themeToggle" title="Toggle light / dark theme" aria-label="Toggle theme">
+        <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- ============================== 1 · INPUT ============================== -->
+    <section class="view" id="view-input">
+      <div class="view-head">
+        <h1>Start from a raw UI log</h1>
+        <p class="lead">One recording session, several business routines, each executed more than once —
+          <strong>interleaved</strong>. Upload a SmartRPA log or pick one of the thesis logs.</p>
+      </div>
+      <div class="grid-input">
+        <div class="stack">
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" accept=".csv" hidden>
+            <svg viewBox="0 0 24 24" class="dz-icon"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            <div class="dz-title">Drop a SmartRPA log here</div>
+            <div class="dz-sub">semicolon-delimited .csv · or click to browse</div>
+          </label>
+          <div class="card">
+            <div class="card-title">Thesis logs</div>
+            <div class="list" id="sampleList"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Recordings <span class="hint">replay a recorded run — no network needed</span></div>
+            <div class="list" id="recordingList"></div>
+          </div>
+        </div>
+        <div class="card preview" id="previewCard">
+          <div class="empty-state">
+            <svg viewBox="0 0 120 60" class="empty-art" aria-hidden="true">
+              <path d="M5 15 C 40 15, 60 45, 115 45" /><path d="M5 30 C 40 30, 70 15, 115 15" /><path d="M5 45 C 45 45, 65 30, 115 30" />
+            </svg>
+            <p>Choose a log to preview it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== 2 · ORACLE ============================= -->
+    <section class="view" id="view-oracle" hidden>
+      <div class="view-head">
+        <h1>Human-in-the-loop: the Oracle</h1>
+        <p class="lead">You never label events. You only declare <strong>what should be there</strong> — which routines,
+          and how many times each one was executed. Everything else is inferred.</p>
+      </div>
+      <div class="grid-oracle">
+        <div class="card">
+          <div class="card-title">Declared routines <span class="hint" id="oracleSummary"></span></div>
+          <div id="routineList" class="routine-list"></div>
+          <div class="row gap">
+            <button class="btn ghost" id="addRoutine"><span class="plus">+</span> Add routine</button>
+            <button class="btn ghost" id="fillCaseStudy" hidden>Use the case-study routines</button>
+          </div>
+          <div class="replay-note" id="replayNote" hidden>Replay — the routines come from the recording.</div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <div class="card-title">Run options</div>
+            <div class="options" id="options"></div>
+          </div>
+          <div class="card run-card">
+            <div class="run-summary" id="runSummary"></div>
+            <div class="row gap" id="speedRow" hidden>
+              <label class="field-label" for="speed">Replay speed</label>
+              <select id="speed" class="select">
+                <option value="0.5">0.5×</option><option value="1" selected>1×</option>
+                <option value="2">2×</option><option value="4">4×</option>
+              </select>
+            </div>
+            <button class="btn primary big" id="runBtn">Run segmentation</button>
+            <div class="form-error" id="runError" hidden></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== 3 · PIPELINE =========================== -->
+    <section class="view" id="view-pipeline" hidden>
+      <div class="statsbar" id="statsbar"></div>
+      <div class="grid-pipeline">
+        <aside class="card timeline" id="timeline"></aside>
+        <section class="card phase-detail" id="phaseDetail"></section>
+        <aside class="card console">
+          <div class="card-title">Pipeline console <span class="hint">the pipeline's own output</span></div>
+          <div class="console-body" id="console"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================== 4 · RESULT ============================= -->
+    <section class="view" id="view-result" hidden>
+      <div class="view-head row between">
+        <div>
+          <h1>Segmented log</h1>
+          <p class="lead" id="resultLead"></p>
+        </div>
+        <div class="row gap" id="resultActions"></div>
+      </div>
+      <div class="kpis" id="resultKpis"></div>
+      <div class="card">
+        <div class="card-title row between">
+          <span>From one interleaved log to separate executions</span>
+          <button class="btn ghost small" id="replayAnim">↻ Untangle again</button>
+        </div>
+        <div class="untangle" id="untangle"></div>
+        <div class="legend" id="untangleLegend"></div>
+      </div>
+      <div class="grid-result">
+        <div class="card">
+          <div class="card-title">Executions</div>
+          <div class="trace-tabs" id="traceTabs"></div>
+          <div id="traceDetail"></div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <div class="card-title">Validation</div>
+            <div id="checks"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Noise sheet <span class="hint">diverted for review, never deleted</span></div>
+            <div id="noiseList"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Sharing topology <span class="hint">assumption A1′ — each shared action serves a subset of routines</span></div>
+        <div id="topologyResult"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="tooltip" id="tooltip" hidden></div>
+  <div class="modal" id="modal" hidden>
+    <div class="modal-box">
+      <div class="modal-head"><span id="modalTitle"></span><button class="icon-btn" id="modalClose" aria-label="Close">✕</button></div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

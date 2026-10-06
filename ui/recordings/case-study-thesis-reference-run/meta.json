@@ -1,0 +1,28 @@
+{
+  "id": "20261006-103729-262974",
+  "created": "2026-10-06T10:37:30",
+  "log_name": "caso_studio_trasferte_2exec.csv",
+  "routines": [
+    {
+      "routine_name": "Travel Authorization",
+      "executions": 2
+    },
+    {
+      "routine_name": "Expense Reimbursement",
+      "executions": 2
+    },
+    {
+      "routine_name": "Purchase Order Approval",
+      "executions": 2
+    },
+    {
+      "routine_name": "Student Grant Disbursement",
+      "executions": 2
+    }
+  ],
+  "model": "gemini-3.5-flash",
+  "source": "Reference run rebuilt from the committed thesis artefacts (cached Phase 0–1 responses, committed Phase 2 routing). Not a live inference: no thought summaries.",
+  "success": true,
+  "duration": 1.602,
+  "title": "Case study — thesis reference run"
+}
