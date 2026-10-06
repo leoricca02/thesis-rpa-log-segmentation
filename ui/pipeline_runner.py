@@ -37,7 +37,6 @@ from data_pipeline import (
 from phase1_boundary_reasoning import infer_sharing_topology
 from phase2_execution_mapping import (
     _check_declared_counts,
-    _check_topology_reach,
     generate_segmented_log,
 )
 
@@ -652,7 +651,6 @@ class LiveRun(Run):
         unrouted = sorted(set(noise_all) - relevance)
 
         s1 = _check_declared_counts(names, self.routines)
-        s2 = _check_topology_reach(topology, self.routines)
         checks = [
             {"id": "P1", "label": "Partition: every routable event in exactly one execution",
              "status": "pass",
@@ -663,9 +661,7 @@ class LiveRun(Run):
              "status": "pass", "detail": ""},
             {"id": "S1", "label": "Execution counts match the declared routines",
              "status": "warn" if s1 else "pass", "detail": " ".join(s1)},
-            {"id": "S2", "label": "Every routine receives at least one shared action",
-             "status": "warn" if s2 else "pass", "detail": " ".join(s2)},
-            {"id": "S3", "label": "Trace identifiers are unique",
+            {"id": "S2", "label": "Trace identifiers are unique",
              "status": "warn" if collisions else "pass",
              "detail": f"{collisions} duplicate id(s) suffixed" if collisions else ""},
         ]

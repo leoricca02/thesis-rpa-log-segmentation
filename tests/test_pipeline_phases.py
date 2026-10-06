@@ -331,20 +331,19 @@ def test_phase2_soft_warning_on_count_mismatch_still_succeeds(tmp_path, capsys):
     assert "SOFT WARNING" in capsys.readouterr().out
 
 
-def test_phase2_soft_warning_routine_without_shared_actions(tmp_path, capsys):
+def test_phase2_routine_without_shared_actions_is_not_a_warning(tmp_path, capsys):
     topology = [
         {"node_id": 0, "shared_with": ["Task A"], "justification": ""},
         {"node_id": 1, "shared_with": ["Task A"], "justification": ""},
         {"node_id": 6, "shared_with": ["Task A"], "justification": ""},
-    ]  # Task B gets nothing shared
+    ]  # Task B gets nothing shared, which is a legitimate topology
     client = StubClient([_plan_ok()])
     ok = p2.generate_segmented_log(
         _phase2_df(), topology, CONSTRAINTS, "m",
         output_file=str(tmp_path / "o.xlsx"), client=client,
     )
     assert ok is True
-    out = capsys.readouterr().out
-    assert "received NO shared actions" in out
+    assert "SOFT WARNING" not in capsys.readouterr().out
 
 
 def test_phase2_empty_topology_routes_everything(tmp_path):

@@ -14,9 +14,7 @@ Under H1' (Subset Sharing) the unit of validation becomes a COVER:
         is in its subset. Nothing is ever dropped or smuggled.
   SOFT CHECKS (warning, output still produced):
     S1. The number of executions per routine matches the declaration.
-    S2. Every routine receives at least one shared action (a routine with no
-        setup at all is suspicious and worth operator review).
-    S3. Duplicate (routine, execution_index) pairs are de-collided with a
+    S2. Duplicate (routine, execution_index) pairs are de-collided with a
         suffix and reported.
 """
 
@@ -195,26 +193,6 @@ def _check_declared_counts(
     return warnings
 
 
-def _check_topology_reach(
-    sharing_topology: list[dict[str, Any]],
-    routine_constraints: list[dict[str, Any]],
-) -> list[str]:
-    """S2: every declared routine should receive at least one shared action."""
-    covered: set[str] = set()
-    for action in sharing_topology:
-        for name in action.get("shared_with", []):
-            covered.add(str(name).strip())
-    warnings: list[str] = []
-    for r in routine_constraints:
-        name = str(r["routine_name"]).strip()
-        if name not in covered:
-            warnings.append(
-                f"Routine '{name}' received NO shared actions; verify the "
-                "inferred topology (it may be correct, but it is unusual)."
-            )
-    return warnings
-
-
 # ------------------------------------------------------------------- pipeline
 def generate_segmented_log(
     df: pd.DataFrame,
@@ -332,10 +310,8 @@ def generate_segmented_log(
         print("[!] Halting Phase 2: traces cannot be tied to the topology.")
         return False
 
-    # ---- S1 / S2 soft checks ----
+    # ---- S1 soft check ----
     for warning in _check_declared_counts(block_names, routine_constraints):
-        print(f"[SOFT WARNING] {warning}")
-    for warning in _check_topology_reach(sharing_topology, routine_constraints):
         print(f"[SOFT WARNING] {warning}")
 
     final_master_df = _reassemble_traces(
@@ -388,7 +364,7 @@ def _reassemble_traces(
             exec_idx = sum(1 for n in block_names[: len(records)] if n == name) + 1
 
         trace_id = f"{name}_exec{exec_idx}"
-        while trace_id in seen_trace_ids:  # S3: de-collide duplicates
+        while trace_id in seen_trace_ids:  # S2: de-collide duplicates
             print(f"[SOFT WARNING] Duplicate trace id '{trace_id}'; suffixing.")
             trace_id += "_b"
         seen_trace_ids.add(trace_id)
