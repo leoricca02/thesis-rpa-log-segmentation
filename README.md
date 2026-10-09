@@ -15,7 +15,7 @@ log into discrete robot executions — including when routines *share* actions o
 ---
 
 > **Master thesis** — *Engineering in Computer Science*
-> Author: **Leonardo Ricca** · Supervisors: **Andrea Marrella**, **Andrea Agostinelli**
+> Author: **Leonardo Ricca** · Supervisors: **Andrea Marrella**, **Simone Agostinelli**
 > Sapienza Università di Roma, 2026
 >
 > This repository contains the implementation, the case-study logs, and the artefacts
@@ -243,7 +243,7 @@ All figures below are from the thesis, on `caso_studio_trasferte_2exec.csv` with
 
 | What | Result |
 | :-- | :-- |
-| Sharing topology | 8 shared actions, **all 22 subset memberships correct** — nothing spurious, nothing missed |
+| Sharing topology | 8 topology entries (6 shared actions and the 2 nodes of a single-routine prerequisite), **all 22 subset memberships correct** — nothing spurious, nothing missed |
 | Routing | **98 / 98** business events in the correct execution; all 8 execution blocks match ground truth exactly |
 | Noise | **8 / 8** diverted; no business step diverted by mistake |
 | Trace assembly | each trace carries exactly the shared actions its subset entitles it to |
@@ -268,7 +268,7 @@ continuity can decide.
 
 **Model dependence**, Phase 1 five times per model (section 7.4)
 
-| Model | Shared actions proposed per run | Clean 8-action topology |
+| Model | Topology entries proposed per run | Clean 8-entry topology |
 | :-- | :-- | --: |
 | Gemini 2.5 Flash | 12, 14, 8, 8, 10 | 2 / 5 |
 | **Gemini 3.5 Flash** | 8, 8, 8, 8, 8 | **5 / 5** |
