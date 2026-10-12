@@ -243,7 +243,7 @@ All figures below are from the thesis, on `caso_studio_trasferte_2exec.csv` with
 
 | What | Result |
 | :-- | :-- |
-| Sharing topology | 8 topology entries (6 shared actions and the 2 nodes of a single-routine prerequisite), **all 22 subset memberships correct** — nothing spurious, nothing missed |
+| Sharing topology | 6 topology entries, **all 22 subset memberships correct** — nothing spurious, nothing missed |
 | Routing | **98 / 98** business events in the correct execution; all 8 execution blocks match ground truth exactly |
 | Noise | **8 / 8** diverted; no business step diverted by mistake |
 | Trace assembly | each trace carries exactly the shared actions its subset entitles it to |
