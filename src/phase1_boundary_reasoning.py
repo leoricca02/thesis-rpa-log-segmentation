@@ -1,9 +1,9 @@
 """Phase 1 (Seventh Approach): LLM inference of the SHARING TOPOLOGY.
 
-The Sixth Approach operated under H1 (Global Sharing): every shared action
+The Sixth Approach operated under A1 (Global Sharing): every shared action
 belongs to ALL routines, so Phase 1 returned a flat list of boundary node ids.
 
-The Seventh Approach relaxes H1 to H1' (Subset Sharing): a shared action may
+The Seventh Approach relaxes A1 to A1' (Subset Sharing): a shared action may
 be a prerequisite/post-requisite for only a SUBSET of the declared routines
 (e.g. an "Open Finance Workspace" click needed by 2 of 4 routines). Phase 1
 therefore returns a *topology*: a mapping from each shared node to the set of
@@ -198,7 +198,7 @@ def infer_sharing_topology(
         has a valid node_id, a non-empty list of declared routine names, and a
         justification string.
     """
-    print("\n--- Phase 1: LLM Sharing-Topology Inference (H1 relaxed) ---")
+    print("\n--- Phase 1: LLM Sharing-Topology Inference (A1 relaxed) ---")
     client = client or SmartLLMClient()
 
     valid_ids = set(int(n) for n in df["node_id"].tolist())

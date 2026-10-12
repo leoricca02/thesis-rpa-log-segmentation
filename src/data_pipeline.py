@@ -211,7 +211,7 @@ def guard_against_collapse(df: pd.DataFrame, ignore_cols: list[str]) -> list[str
     Phase 0B decides which columns are metadata but never checks what the
     decision COSTS. Dropping a column can make two events that were previously
     distinguishable serialise to identical text; when that happens the pipeline
-    has destroyed exactly the evidence H3 says Phase 2 depends on, and Phase 2
+    has destroyed exactly the evidence A3 says Phase 2 depends on, and Phase 2
     is left with no basis for separating those events beyond guessing.
 
     This guard measures that collapse and restores the minimum set of columns
@@ -291,7 +291,7 @@ def guard_against_collapse(df: pd.DataFrame, ignore_cols: list[str]) -> list[str
         if best is None:
             print(f"    [!] {len(groups)} group(s) cannot be resolved by any "
                   f"prunable column. Those events are indistinguishable in the "
-                  f"source log itself — a genuine H3 limit, not a pruning error.")
+                  f"source log itself — a genuine A3 limit, not a pruning error.")
             for nodes in groups[:5]:
                 print(f"        nodes {nodes}")
             break
@@ -302,7 +302,7 @@ def guard_against_collapse(df: pd.DataFrame, ignore_cols: list[str]) -> list[str
               f"{len(groups)} remaining)")
 
     if restored:
-        print(f"[*] Restored {len(restored)} column(s) to preserve H3 evidence: "
+        print(f"[*] Restored {len(restored)} column(s) to preserve A3 evidence: "
               f"{restored}")
     return sorted(ignore)
 
@@ -470,7 +470,7 @@ def load_and_serialize_smartrpa(
     ]
 
     # Payload-less warning: if many rows serialise to the same anchor-only text,
-    # the routines may be indistinguishable (the H3 limitation). Flag it so the
+    # the routines may be indistinguishable (the A3 limitation). Flag it so the
     # operator knows Phase 2 is at risk, rather than discovering it silently.
     distinct_narratives = len(set(narratives))
     if narratives and distinct_narratives < max(2, len(narratives) // 2):

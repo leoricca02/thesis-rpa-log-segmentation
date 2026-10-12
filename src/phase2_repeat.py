@@ -24,7 +24,7 @@ it in each (routine, execution), and which events vary. Second, and only if a
 reference routing is supplied via --truth, ACCURACY per run against it.
 
 The report additionally cross-references unstable events against events whose
-serialised narrative is IDENTICAL to that of another event. Under H3 an event
+serialised narrative is IDENTICAL to that of another event. Under A3 an event
 with no distinguishing payload has nothing for the model to reason over, so any
 instability should concentrate exactly there. Whether it does is the question
 this harness exists to answer.
@@ -78,7 +78,7 @@ def _load_reference(path: str) -> dict[int, tuple[str, int]]:
 def _duplicate_narrative_nodes(df) -> set[int]:
     """Node ids whose serialised narrative is identical to another node's.
 
-    These are the events H3 says cannot be separated on content, because their
+    These are the events A3 says cannot be separated on content, because their
     recorded text carries nothing that distinguishes them.
     """
     buckets: dict[str, list[int]] = defaultdict(list)
@@ -198,7 +198,7 @@ def main() -> None:
                 print(f"      {key[0]} exec{key[1]:<3} {c}/{valid_runs} [{bar}]{mark}")
             print()
 
-    # ---- the H3 cross-check ---------------------------------------------
+    # ---- the A3 cross-check ---------------------------------------------
     amb_routed = ambiguous & set(tally)
     dist_routed = set(tally) - ambiguous
     amb_unstable = len(ambiguous & set(unstable))
@@ -209,7 +209,7 @@ def main() -> None:
     if amb_routed:
         print(f"  events identical to another event  : "
               f"{len(amb_routed) - amb_unstable}/{len(amb_routed)} stable")
-    print("\nUnder H3, an event carrying no distinguishing payload gives the model")
+    print("\nUnder A3, an event carrying no distinguishing payload gives the model")
     print("nothing to reason over, so instability is expected to concentrate there.")
     print("========================================================================")
 

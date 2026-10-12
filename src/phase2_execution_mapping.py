@@ -3,7 +3,7 @@
 The Sixth Approach validated a PARTITION: every node assigned to exactly one
 execution, then one global boundary set was prepended/appended to every trace.
 
-Under H1' (Subset Sharing) the unit of validation becomes a COVER:
+Under A1' (Subset Sharing) the unit of validation becomes a COVER:
   HARD INVARIANTS (violation -> abort, no output):
     P1. Every NON-shared node is assigned to exactly one execution block
         (still a partition over the routable nodes).

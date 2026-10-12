@@ -6,8 +6,8 @@ action belongs to which routines) -> Phase 2 (route, validate the cover,
 reassemble, export). Fail-fast checkpoints between phases; one shared
 SmartLLMClient across all phases.
 
-Hypothesis change vs the Sixth Approach: H1 (Global Sharing) is relaxed to
-H1' (Subset Sharing). A shared action may serve all routines, a subset, or a
+Assumption change vs the Sixth Approach: A1 (Global Sharing) is relaxed to
+A1' (Subset Sharing). A shared action may serve all routines, a subset, or a
 single routine (shared across its executions). Full sharing is the special
 case subset == all declared routines.
 
