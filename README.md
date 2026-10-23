@@ -6,7 +6,7 @@
 log into discrete robot executions — including when routines *share* actions only partially.**
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Gemini](https://img.shields.io/badge/LLM-Gemini%203.5%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
+[![Gemini](https://img.shields.io/badge/LLM-Gemini%203.6%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
 [![Tests](https://img.shields.io/badge/tests-47%20passing-2CA02C)](#11-testing)
 [![Case](https://img.shields.io/badge/benchmark-Case%203.4%20%2B%20partial%20sharing-8C564B)](#5-the-case-study)
 
@@ -53,7 +53,7 @@ Prior approaches assume that shared actions are shared by **every** routine — 
 the start, a single logout at the end. The thesis calls this assumption **A1** and relaxes it to
 **A1′**: an action may be shared by an arbitrary **subset** of the routines.
 
-That relaxation is the difference between a boundary-detection problem and a **topology-inference**
+That relaxation is the difference between a boundary-detection problem and a **subset-inference**
 problem. Phase 1 no longer returns a list of globally shared nodes; it returns, for each shared
 action, *which routines share it*. A trace is then reassembled with exactly the shared actions its
 own subset entitles it to — no more, no less.
@@ -94,7 +94,7 @@ flowchart TD
     W["Human-in-the-Loop wizard<br/>routine names + execution counts"] --> G
     F --> G["<b>0A-2</b> Relevance tagging<br/>events unrelated to any declared routine"]
 
-    G --> H["<b>PHASE 1</b> — Sharing-topology inference<br/>for each shared action: <i>which routines share it</i>"]
+    G --> H["<b>PHASE 1</b> — Shared-action inference<br/>for each shared action: <i>which routines share it</i>"]
     H --> R{"--review?"}
     R -->|"yes"| I["Operator approves or edits<br/>the inferred subsets"]
     R -->|"no"| J
@@ -106,7 +106,7 @@ flowchart TD
     V -->|"ok"| K["Reassemble: each trace gets<br/>only the shared actions its subset allows"]
 
     N --> O
-    K --> O["XLSX: Segmented_Logs + Sharing_Topology + Noise<br/>plus routing audit JSON"]
+    K --> O["XLSX: segmented logs + shared actions + Noise<br/>plus routing audit JSON"]
 
     style P0 fill:#eef5fb,stroke:#1F77B4
     style W fill:#fff4e6,stroke:#FF7F0E
@@ -135,7 +135,7 @@ flowchart TD
 ├── src/
 │   ├── main.py                       # Orchestrator, routine-declaration wizard, --review flow, CLI
 │   ├── data_pipeline.py              # Ingestion, Phase 0A / 0B / 0B-2 / 0A-2, serialisation
-│   ├── phase1_boundary_reasoning.py  # Phase 1 — sharing-topology inference (A1')
+│   ├── phase1_boundary_reasoning.py  # Phase 1 — shared-action inference (A1')
 │   ├── phase2_execution_mapping.py   # Phase 2 — subset-aware routing, validation, export
 │   ├── smart_llm_client.py           # Gemini REST client: cache, telemetry, retry, budget translation
 │   ├── analyze_telemetry.py          # Token/cost observability report
@@ -184,7 +184,7 @@ sharing, which is what the thesis set out to test.
 
 That last row is the design decision that makes the case study work: because R4 does not start
 from an email, the webmail opener is a genuine **three-of-four subset** rather than a global
-prerequisite. The ground-truth topology therefore contains a 4/4 subset, a 3/4, a 2/4 and a
+prerequisite. The ground truth therefore contains a 4/4 subset, a 3/4, a 2/4 and a
 single-routine prerequisite — every subset size the relaxed assumption allows.
 
 | File | Rows | Business events | Noise | Case |
@@ -215,7 +215,7 @@ python src/main.py
 # Any other log
 python src/main.py data/case_study/caso_studio_trasferte_2exec_hard.csv
 
-# Pause after Phase 1 to inspect and edit the inferred sharing topology
+# Pause after Phase 1 to inspect and edit the inferred shared actions
 python src/main.py --review
 
 # Token and cost report
@@ -226,7 +226,7 @@ The wizard asks for the routine names and execution counts. Output lands in the 
 directory**: the colour-coded workbook and the routing audit JSON.
 
 **Demo UI.** The same pipeline also runs in the browser, phase by phase, with the model's
-reasoning, an interactive topology review and replayable recordings — see [`ui/README.md`](ui/README.md):
+reasoning, an interactive review of the shared actions and replayable recordings — see [`ui/README.md`](ui/README.md):
 
 ```bash
 pip install -r ui/requirements.txt
@@ -237,13 +237,15 @@ python ui/server.py        # http://127.0.0.1:8000
 
 ## 7. Reported results
 
-All figures below are from the thesis, on `caso_studio_trasferte_2exec.csv` with **Gemini 3.5 Flash**.
+All figures below are from the thesis, on `caso_studio_trasferte_2exec.csv` with **Gemini 3.5 Flash**,
+the model of the thesis campaign. `.env.example` now selects **Gemini 3.6 Flash**; a run on 3.6 is a
+new measurement and may differ from these figures.
 
 **Correctness of a single production run** (section 7.2)
 
 | What | Result |
 | :-- | :-- |
-| Sharing topology | 6 topology entries, **all 22 subset memberships correct** — nothing spurious, nothing missed |
+| Shared actions | **6 shared actions, all 20 routine memberships correct**, plus the single-routine accounting prerequisite — nothing spurious, nothing missed |
 | Routing | **98 / 98** business events in the correct execution; all 8 execution blocks match ground truth exactly |
 | Noise | **8 / 8** diverted; no business step diverted by mistake |
 | Trace assembly | each trace carries exactly the shared actions its subset entitles it to |
@@ -268,14 +270,17 @@ continuity can decide.
 
 **Model dependence**, Phase 1 five times per model (section 7.4)
 
-| Model | Topology entries proposed per run | Clean 8-entry topology |
-| :-- | :-- | --: |
-| Gemini 2.5 Flash | 12, 14, 8, 8, 10 | 2 / 5 |
-| **Gemini 3.5 Flash** | 8, 8, 8, 8, 8 | **5 / 5** |
+| Model | Runs that find exactly the right shared actions, nothing spurious |
+| :-- | --: |
+| Gemini 2.5 Flash | 2 / 5 |
+| **Gemini 3.5 Flash** | **5 / 5** |
 
-The weaker model over-proposes, promoting ordinary business steps to shared status — the more
-damaging failure direction, since a wrongly-shared action is duplicated into every trace of every
-routine attached to it. This is why 3.5 Flash is the default here.
+The weaker model over-proposes in three of its five runs, promoting ordinary business steps to
+shared status — the more damaging failure direction, since a wrongly-shared action is duplicated
+into every trace of every routine attached to it. On 3.5 Flash every routine membership is the same
+in all five runs except one: Grant on the procurement opener (node 6), the thinnest dependency in
+the log, is correct in four. This is why the thesis used 3.5 Flash; `.env.example` now selects its
+successor, 3.6 Flash.
 
 ---
 
@@ -285,7 +290,7 @@ Two harnesses reproduce the repeatability studies. Both hold the other phases fi
 fresh cache per run, so every call is a real inference.
 
 ```bash
-# Phase 1 topology stability — thesis 7.4
+# Phase 1 stability — thesis 7.4
 python src/phase1_repeat.py data/case_study/caso_studio_trasferte_2exec.csv 5 \
   "Travel Authorization:2,Expense Reimbursement:2,Purchase Order Approval:2,Student Grant Disbursement:2"
 
@@ -296,12 +301,14 @@ python src/phase2_repeat.py data/case_study/caso_studio_trasferte_2exec.csv 5 \
 ```
 
 **What the committed cache does and does not do.** `results/case_study/gemini_cache.json` holds
-the responses for Phases 0A, 0B, 0A-2 and 1, so those phases replay with no API call. It does
-**not** contain a Phase 2 entry: Phase 2 requires one live call. This is deliberate rather than an
+the responses for Phases 0A, 0B, 0A-2 and 1, so those phases replay with no API call. The cache is
+keyed by model, and its entries were recorded with Gemini 3.5 Flash: to replay them, set
+`GEMINI_MODEL=gemini-3.5-flash` in `.env`. With 3.6 Flash every phase is a live call. The cache
+does **not** contain a Phase 2 entry: Phase 2 requires one live call. This is deliberate rather than an
 omission — section 7.3 establishes that Phase 2 is stochastic, so a cached routing would present
 one draw from a distribution as if it were the pipeline's deterministic answer.
 
-Expect a replay to reproduce the committed topology and to agree with the committed routing on
+Expect a replay to reproduce the committed shared actions and to agree with the committed routing on
 most but not necessarily all events. A verification run performed while preparing this repository
 agreed on **97 of 98** events; the single difference was node 105, which Table 7.4 of the thesis
 already lists among the four unstable events (assigned to execution 1 in three runs of five, to
@@ -315,9 +322,10 @@ execution 2 in the other two).
 is filled with a colour that is a pure function of (routine, execution), so figures are
 reproducible. Header frozen, autofilter on, widths fitted.
 
-**`Sharing_Topology`** — one row per shared action: `node_id`, the subset of routines that share
-it, how many routines that is, the model's `justification`, and the serialised `narrative`. This
-sheet is the A1' contribution made inspectable.
+**Shared actions** (second sheet) — one row per action Phase 1 assigns to a subset of routines:
+`node_id`, the routines in its subset, how many they are, the model's `justification`, and the
+serialised `narrative`. Rows with a single routine are routine-level prerequisites rather than
+shared actions. This sheet is the A1' contribution made inspectable.
 
 **`Noise`** — events diverted by relevance tagging or declined by the router: the human review queue.
 
