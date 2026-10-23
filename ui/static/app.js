@@ -8,36 +8,24 @@
 const VIEWS = ["input", "routines", "pipeline", "result"];
 const VIEW_LABELS = { input: "Input log", routines: "Routines", pipeline: "Pipeline", result: "Result" };
 
+// The three phases the UI presents. The backend still streams its finer-grained
+// steps (`parts`); each one is folded into the phase it belongs to.
 const PHASES = [
-  { id: "load", code: "IN", title: "Ingestion", kind: "local",
-    desc: "Parse the semicolon-delimited SmartRPA CSV — dozens of sparse columns per event — and sort every event chronologically.",
-    policy: "Local step, no model call." },
-  { id: "0A", code: "0A", title: "Noise filtration", kind: "llm",
-    desc: "The model is shown the log's own event vocabulary with counts and names the event types that carry no business intent — mouse moves, hovers, scrolls. Nothing is hard-coded.",
-    policy: "Fail-open: on an API error every row is kept. Keeping too much is recoverable; dropping real actions is not." },
-  { id: "0B", code: "0B", title: "Feature selection", kind: "llm",
-    desc: "Each column is shown with up to three distinct sample values; the model prunes pure system metadata such as timestamps, ids and window sizes. application and event_type are anchors and are never pruned.",
-    policy: "Falls back to a conservative metadata list on an API error." },
-  { id: "0B2", code: "0B-2", title: "Collapse guard", kind: "local",
-    desc: "If pruning makes two distinguishable events serialise to identical text, the guard restores the minimum set of columns that separates them again — the evidence Phase 2 depends on.",
-    policy: "Local computation, no model call. Schema-agnostic." },
-  { id: "serialize", code: "S", title: "Serialisation", kind: "local",
-    desc: "A wide, sparse CSV row is not something a language model reads well, so every event becomes one anchored sentence built only from business-relevant columns.",
-    policy: "Each event receives a stable node id used by every later phase." },
-  { id: "0A2", code: "0A-2", title: "Relevance tagging", kind: "llm",
-    desc: "Given the declared routine names, the model flags events that belong to none of them — a genuine click, but in an unrelated application. A payload guard protects any event carrying a distinctive token.",
-    policy: "Tagged events are diverted to the Noise sheet for review, never deleted. Fail-open." },
+  { id: "0", code: "0", title: "Cleaning & narrative", kind: "llm",
+    parts: ["load", "0A", "0B", "0B2", "serialize", "0A2"],
+    desc: "Phase 0 cleans the raw log and turns it into a natural-language narrative.",
+    policy: "Every event becomes one sentence with a stable node id, the only input Phases 1 and 2 read." },
   { id: "1", code: "1", title: "Shared actions", kind: "llm",
-    desc: "For every shared action — login, module openers, logout — the model infers which subset of routines depends on it. Assumption A1′: an action may be shared by any subset, not only by all routines. Reasoning is written before the answer.",
+    parts: ["1", "review"],
+    desc: "For every shared action — login, module openers, logout — the model infers which subset of routines depends on it. Assumption A1′: an action may be shared by any subset, not only by all routines. Reasoning is written before the answer; with human review on, you approve or edit the subsets before Phase 2.",
     policy: "Fail-fast on an API error. Hallucinated node ids and unknown routine names are dropped." },
-  { id: "review", code: "H", title: "Human review", kind: "human",
-    desc: "The operator inspects the inferred subsets and approves or edits them before Phase 2 spends tokens on them.",
-    policy: "Supervised fallback — the CLI's --review flag." },
   { id: "2", code: "2", title: "Execution routing", kind: "llm",
+    parts: ["2"],
     desc: "The remaining events are distributed into exactly the execution buckets you declared: routine meaning decides which routine, payload continuity decides which execution. The result is validated as a cover, and each trace receives only the shared actions its subset allows.",
     policy: "A node in two executions aborts the run; a node routed nowhere goes to the Noise sheet." },
 ];
 const PHASE_BY_ID = Object.fromEntries(PHASES.map((p) => [p.id, p]));
+const PHASE_OF_PART = Object.fromEntries(PHASES.flatMap((p) => p.parts.map((part) => [part, p.id])));
 const CASE_STUDY_ROUTINES = [
   { name: "Travel Authorization", executions: 2 },
   { name: "Expense Reimbursement", executions: 2 },
@@ -499,7 +487,7 @@ async function startRun() {
 // ============================================================= 3 · PIPELINE
 function newRun(id, replay) {
   const phases = {};
-  for (const p of PHASES) phases[p.id] = { status: "pending", seconds: null, data: null, calls: [] };
+  for (const part of Object.keys(PHASE_OF_PART)) phases[part] = { status: "pending", seconds: null, data: null, calls: [] };
   return {
     id, replay, lastSeq: -1, start: null, raw: null, phases, current: null,
     logs: [], nodes: [], nodeById: {}, review: null, error: null,
@@ -554,7 +542,7 @@ function onEvent(e) {
         ph.status = "running";
         R.current = e.phase;
         if (e.phase === "2" && P.review.status === "pending") P.review.status = "skipped";
-        if (S.follow) S.focus = e.phase;
+        if (S.follow) S.focus = PHASE_OF_PART[e.phase];
       } else {
         ph.status = e.status;
         ph.seconds = e.seconds ?? null;
@@ -563,7 +551,13 @@ function onEvent(e) {
       break;
     }
     case "log":
-      appendConsole(e.line);
+      // Phase 0's own output names its internal steps; the console shows one header for it.
+      if (PHASE_OF_PART[e.phase] === "0") {
+        if (!R.phase0Logged) appendConsole("--- Phase 0: cleaning the raw log and building the narrative ---");
+        R.phase0Logged = true;
+      } else {
+        appendConsole(e.line);
+      }
       break;
     case "llm_call":
       (P[e.phase]?.calls || []).push({ ...e, status: "running", startedAt: Date.now() });
@@ -604,7 +598,7 @@ function onEvent(e) {
         orig: Object.fromEntries(e.topology.map((a) => [a.node_id, new Set(a.shared_with)])),
       };
       P.review.status = "waiting";
-      S.focus = "review";
+      S.focus = "1";
       S.follow = true;
       if (S.view !== "pipeline") go("pipeline");
       detailDirty = true;
@@ -620,7 +614,7 @@ function onEvent(e) {
     case "error":
       R.error = e;
       if (P[e.phase]) P[e.phase].status = "error";
-      S.focus = P[e.phase] ? e.phase : S.focus;
+      S.focus = PHASE_OF_PART[e.phase] || S.focus;
       detailDirty = true;
       break;
     case "done":
@@ -703,8 +697,26 @@ setInterval(() => {
   });
 }, 200);
 
-function phaseTokens(ph) {
-  return ph.calls.reduce((a, c) => a + ((c.tokens?.input || 0) + (c.tokens?.output || 0) + (c.tokens?.thoughts || 0)), 0);
+function phaseTokens(calls) {
+  return calls.reduce((a, c) => a + ((c.tokens?.input || 0) + (c.tokens?.output || 0) + (c.tokens?.thoughts || 0)), 0);
+}
+
+// Fold the backend steps of a phase into one status, duration and call list.
+function phaseState(R, p) {
+  const parts = p.parts.map((id) => R.phases[id]);
+  const statuses = parts.map((ph) => ph.status);
+  const later = PHASES.slice(PHASES.indexOf(p) + 1).some((q) => q.parts.some((id) => R.phases[id].status !== "pending"));
+  let status = "pending";
+  if (statuses.includes("error")) status = "error";
+  else if (statuses.includes("waiting")) status = "waiting";
+  else if (later || statuses.every((st) => st === "done" || st === "skipped")) status = "done";
+  else if (statuses.some((st) => st !== "pending")) status = "running";
+  const timed = parts.filter((ph, i) => p.parts[i] !== "review" && ph.seconds !== null);
+  return {
+    status,
+    seconds: timed.length ? timed.reduce((a, ph) => a + ph.seconds, 0) : null,
+    calls: parts.flatMap((ph) => ph.calls),
+  };
 }
 
 function renderTimeline() {
@@ -713,24 +725,23 @@ function renderTimeline() {
   tl.innerHTML = "";
   if (!R) return;
   for (const p of PHASES) {
-    const ph = R.phases[p.id];
+    const ph = phaseState(R, p);
     const meta = [];
     if (ph.status === "running") meta.push(h("span", {}, "running…"));
     if (ph.status === "waiting") meta.push(h("span", {}, "waiting for you"));
-    if (ph.status === "skipped") meta.push(h("span", {}, "skipped"));
     if (ph.status === "error") meta.push(h("span", {}, "failed"));
     if (ph.seconds !== null && ph.status === "done") meta.push(h("span", {}, fmtSec(ph.seconds)));
     const call = ph.calls[ph.calls.length - 1];
     if (call && call.status !== "running") {
-      const tok = phaseTokens(ph);
-      if (call.cached) meta.push(h("span", {}, "cache hit"));
+      const tok = phaseTokens(ph.calls);
+      if (ph.calls.every((c) => c.cached)) meta.push(h("span", {}, "cache hit"));
       else if (tok) meta.push(h("span", {}, `${fmtInt(tok)} tok`));
     }
     const icon = ph.status === "done" ? "✓" : ph.status === "error" ? "!" : p.code;
     tl.append(
       h("div", {
         class: `tl-item ${ph.status} ${S.focus === p.id ? "focused" : ""}`,
-        onclick: () => { S.focus = p.id; S.follow = R.done || p.id === R.current; renderTimeline(); renderPhaseDetail(); },
+        onclick: () => { S.focus = p.id; S.follow = R.done || p.id === PHASE_OF_PART[R.current]; renderTimeline(); renderPhaseDetail(); },
       },
         h("div", { class: "tl-dot" }, icon),
         h("div", {},
@@ -747,9 +758,9 @@ function renderPhaseDetail() {
   const scroll = box.scrollTop;
   box.innerHTML = "";
   if (!R) return;
-  const pid = S.focus || R.current || "load";
+  const pid = S.focus || PHASE_OF_PART[R.current] || "0";
   const p = PHASE_BY_ID[pid];
-  const ph = R.phases[pid];
+  const ph = phaseState(R, p);
 
   box.append(h("div", { class: "pd-head" },
     h("div", { class: "pd-code" }, p.code),
@@ -760,21 +771,21 @@ function renderPhaseDetail() {
 
   if (ph.status === "pending") {
     box.append(h("div", { class: "section note" }, "Waiting for the earlier phases."));
-  } else if (ph.status === "skipped") {
-    box.append(h("div", { class: "section note" }, pid === "review"
-      ? "Human review is off for this run: the inferred shared actions go straight to Phase 2."
-      : "This phase is disabled for this run."));
+  } else if (pid === "0" && ph.status === "running") {
+    box.append(h("div", { class: "section waiting-model" },
+      h("span", { class: "dots" }, h("i"), h("i"), h("i")), h("span", {}, "Cleaning the raw log and writing the narrative…")));
   }
 
-  for (const call of ph.calls) box.append(renderCall(pid, call));
+  // Phase 0 shows only its output; Phases 1 and 2 also show their model call.
+  if (pid !== "0") for (const call of ph.calls) box.append(renderCall(pid, call));
 
   const renderer = PHASE_RENDERERS[pid];
-  if (renderer && (ph.data || pid === "review")) {
-    const content = renderer(ph.data, R);
+  if (renderer) {
+    const content = renderer(R);
     if (content) box.append(content);
   }
 
-  if (R.error && R.error.phase === pid) {
+  if (R.error && PHASE_OF_PART[R.error.phase] === pid) {
     box.append(h("div", { class: "error-box" },
       h("b", {}, "Run stopped. "), R.error.message,
       R.error.details?.length ? h("ul", {}, R.error.details.map((d) => h("li", {}, d))) : null));
@@ -834,7 +845,7 @@ function renderCall(pid, call) {
 }
 
 function showPrompt(call) {
-  openModal(`Prompt · Phase ${PHASE_BY_ID[call.phase]?.code || call.phase}`,
+  openModal(`Prompt · Phase ${PHASE_BY_ID[PHASE_OF_PART[call.phase]]?.code || call.phase}`,
     h("div", {},
       h("div", { class: "section-title" }, "System instruction"), h("pre", {}, call.system_prompt),
       h("div", { class: "section-title" }, "User prompt"), h("pre", {}, call.user_prompt),
@@ -867,68 +878,17 @@ function sentenceHtml(narrative) {
 }
 
 const PHASE_RENDERERS = {
-  load(data) {
-    return section("What was read",
-      h("div", { class: "kpis inset" },
-        kpi(fmtInt(data.rows), "events"),
-        kpi(data.columns, "columns"),
-        kpi(data.populated_columns, "ever populated"),
-        kpi(Object.keys(data.apps).length, "applications")));
-  },
-
-  "0A"(data) {
-    const vocab = Object.entries(data.vocabulary);
-    const max = Math.max(1, ...vocab.map(([, c]) => c));
-    const noise = new Set(data.noise_types);
-    const bars = h("div", { class: "bars" }, vocab.map(([type, count], i) =>
-      h("div", { class: `bar-row ${noise.has(type) ? "dropped" : ""}` },
-        h("span", { class: "bar-label", title: type }, type),
-        h("div", { class: "bar-track" }, h("div", { class: "bar-fill", style: { width: `${(count / max) * 100}%`, animationDelay: `${i * 40}ms` } })),
-        h("span", { class: "bar-value" }, `${count}${noise.has(type) ? " · dropped" : ""}`))));
-    const verdict = data.failed ? "The call failed — fail-open: no rows were removed."
-      : noise.size ? `${noise.size} event type(s) classified as noise → ${data.removed.length} event(s) removed.`
-        : "No event type was classified as noise: every type in this log carries business intent.";
-    return section("Event vocabulary shown to the model", bars, h("div", { class: "verdict" }, verdict));
-  },
-
-  "0B"(data, R) {
-    const restored = new Set(R.phases["0B2"].data?.restored || []);
-    const pruned = new Set(data.pruned);
-    const empty = new Set(data.empty);
-    const anchors = new Set(data.anchors);
-    const chips = h("div", { class: "chips" }, data.columns.map((c, i) => {
-      let cls = "kept";
-      if (anchors.has(c)) cls = "anchor";
-      else if (restored.has(c)) cls = "restored";
-      else if (pruned.has(c)) cls = "pruned";
-      else if (empty.has(c)) cls = "empty";
-      return h("span", { class: `chip ${cls}`, style: { animationDelay: `${i * 12}ms` } }, c);
-    }));
-    const kept = data.columns.filter((c) => !pruned.has(c) && !empty.has(c)).length;
-    return section(`Columns · ${data.pruned.length} pruned as metadata, ${kept} carry business context`, chips,
-      h("div", { class: "chip-legend" },
-        h("span", {}, h("span", { class: "chip anchor" }, "anchor"), "never pruned"),
-        h("span", {}, h("span", { class: "chip kept" }, "kept"), "business context"),
-        h("span", {}, h("span", { class: "chip pruned" }, "pruned"), "metadata"),
-        h("span", {}, h("span", { class: "chip empty" }, "empty"), "never populated"),
-        restored.size ? h("span", {}, h("span", { class: "chip restored" }, "restored"), "by the collapse guard") : null),
-      data.failed ? h("div", { class: "verdict" }, "The call failed — the fallback metadata list was used.") : null);
-  },
-
-  "0B2"(data) {
-    const verdict = data.restored.length
-      ? `Pruning would have made distinguishable events identical. Restored ${data.restored.length} column(s) to keep them apart:`
-      : "Pruning collapses no distinguishable events — the Phase 0B selection stands.";
-    return h("div", {},
-      section("Verdict", h("div", { class: "verdict" }, verdict),
-        data.restored.length ? h("div", { class: "chips", style: { marginTop: "8px" } }, data.restored.map((c) => h("span", { class: "chip restored" }, c))) : null),
-      section(`Columns that enter the narrative (${data.kept.length})`,
-        h("div", { class: "chips" }, data.kept.map((c) => h("span", { class: `chip ${data.restored.includes(c) ? "restored" : "kept"}` }, c)))));
-  },
-
-  serialize(data, R) {
+  // Phase 0's output is the narrative Phase 1 receives: one sentence per event.
+  "0"(R) {
+    const data = R.phases.serialize.data;
+    if (!data) return null;
     const kept = new Set(R.phases["0B2"].data?.kept || []);
     const out = h("div", {});
+    out.append(section("From raw log to narrative",
+      h("div", { class: "kpis inset" },
+        kpi(fmtInt(R.raw?.rows ?? data.nodes.length), "raw events"),
+        kpi(R.raw?.columns ?? "—", "raw columns"),
+        kpi(fmtInt(data.nodes.length), "sentences"))));
     if (data.example) {
       const kv = h("div", { class: "kv" }, Object.entries(data.example.raw_fields).map(([k, v]) =>
         h("div", { class: kept.has(k) || k === "application" || k === "event_type" ? "" : "pruned" }, h("span", {}, k), h("span", { title: v }, v))));
@@ -936,105 +896,40 @@ const PHASE_RENDERERS = {
         h("div", { class: "serial" }, kv, h("div", { class: "arrow" }, "→"),
           h("div", { class: "sentence", html: sentenceHtml(data.example.narrative) }))));
     }
-    const list = h("div", { class: "table-wrap", style: { maxHeight: "260px" } },
+    const list = h("div", { class: "table-wrap", style: { maxHeight: "320px" } },
       h("table", {}, h("tbody", {}, data.nodes.map((n) =>
         h("tr", {}, h("td", { class: "num" }, n.id), h("td", { class: "mono", html: sentenceHtml(n.narrative) }))))));
-    out.append(section(`${data.nodes.length} events serialised`, list));
+    out.append(section(`The narrative Phase 1 receives · ${data.nodes.length} sentences`, list));
     return out;
   },
 
-  "0A2"(data) {
-    const out = h("div", {});
-    const verdict = data.failed ? "The call failed — fail-open: nothing was tagged."
-      : data.noise.length ? `${data.noise.length} event(s) belong to none of the declared routines and are diverted to the Noise sheet.`
-        : "Every event plausibly belongs to one of the declared routines.";
-    out.append(section("Verdict", h("div", { class: "verdict" }, verdict)));
-    if (data.noise.length) out.append(section("Diverted to Noise", h("div", { class: "event-list" }, data.noise.map((n) => eventRow(n)))));
-    if (data.rescued.length) {
-      out.append(section("Rescued by the payload guard",
-        h("div", { class: "note", style: { marginBottom: "8px" } }, "Flagged by the model, but they carry a distinctive token — a likely payload — so they stay."),
-        h("div", { class: "event-list" }, data.rescued.map((n) => eventRow(n, "rescued")))));
-    }
-    return out;
-  },
-
-  "1"(data, R) {
+  "1"(R) {
+    const data = R.phases["1"].data;
+    if (!data) return null;
     const out = h("div", {});
     if (data.reasoning) {
       out.append(section("Reasoning written before the answer",
         typewriter(`${R.id}-1-reasoning`, data.reasoning, "reasoning")));
+    }
+    // With human review on, the review panel replaces the plain matrix.
+    if (R.review) {
+      out.append(reviewSection(R));
+      return out;
     }
     const routines = (R.start?.routines || []).map((r) => r.routine_name);
     const shared = data.topology.filter((a) => a.shared_with.length > 1);
     out.append(section(`Inferred shared actions · ${shared.length}`
       + (data.proposed > data.topology.length ? ` (${data.proposed} proposed, sanitised)` : ""),
       topologyMatrix(shared, routines, { justify: true })));
-    return out;
-  },
-
-  review(_data, R) {
-    const rv = R.review;
-    if (!rv) return null;
-    const routines = rv.routines;
-    const out = h("div", { class: "section" });
-    if (!rv.submitted) {
-      out.append(h("div", { class: "review-banner", html: ICON.hand },));
-      out.lastChild.append(h("div", {},
-        h("strong", {}, rv.replay ? "Recorded review step. " : "Your turn. "),
-        rv.replay ? "In the recorded run the operator reviewed these shared actions here. Continue to replay their decision."
-          : "Each row is an action performed once that several executions rely on. Toggle which routines depend on it, or clear a row to make it an ordinary step."));
-    }
-    const resolved = rv.resolved;
-    const topo = resolved ? resolved.topology : rv.topology;
-    const editedCells = new Set();
-    if (!resolved) {
-      for (const a of rv.topology) for (const r of routines) {
-        if (rv.sel[a.node_id].has(r) !== rv.orig[a.node_id].has(r)) editedCells.add(`${a.node_id}|${r}`);
-      }
-    } else {
-      for (const c of resolved.changes || []) for (const r of routines) {
-        if (c.before.includes(r) !== c.after.includes(r)) editedCells.add(`${c.node_id}|${r}`);
-      }
-    }
-    const editable = !resolved && !rv.replay && !rv.submitted;
-    // Actions Phase 1 gave to a single routine are not shown: they are not shared
-    // actions. They are still sent back unchanged, so Phase 2 handles them as inferred.
-    const isShared = (a) => rv.orig[a.node_id].size > 1;
-    const rows = (resolved ? mergeRemoved(rv.topology, topo) : rv.topology).filter(isShared);
-    out.append(topologyMatrix(rows, routines, {
-      justify: true, editable, sel: resolved ? null : rv.sel, editedCells,
-      onToggle: (nid, r) => {
-        const set = rv.sel[nid];
-        set.has(r) ? set.delete(r) : set.add(r);
-        renderPhaseDetail();
-      },
-      onClear: (nid) => { rv.sel[nid].clear(); renderPhaseDetail(); },
-    }));
-    if (resolved) {
-      const n = (resolved.changes || []).length;
-      out.append(h("div", { class: "verdict" }, n ? `Approved with ${n} edited action(s).` : "Approved as inferred — no edits."));
-    } else if (!rv.submitted) {
-      const actions = h("div", { class: "review-actions" });
-      if (rv.replay) {
-        actions.append(h("button", { class: "btn primary", onclick: () => submitReview("accept") }, "Continue replay →"));
-      } else {
-        actions.append(
-          h("button", { class: "btn danger", onclick: () => submitReview("abort") }, "Abort run"),
-          h("button", { class: "btn ghost", disabled: !editedCells.size, onclick: () => {
-            for (const a of rv.topology) rv.sel[a.node_id] = new Set(rv.orig[a.node_id]);
-            renderPhaseDetail();
-          } }, "Reset edits"),
-          h("button", { class: "btn primary", onclick: () => submitReview("accept") },
-            editedCells.size ? "Approve edits & run Phase 2 →" : "Approve & run Phase 2 →"));
-      }
-      out.append(actions);
-    } else {
-      out.append(h("div", { class: "verdict" }, h("span", { class: "spinner", style: { display: "inline-block", verticalAlign: "-2px", marginRight: "8px" } }), "Decision sent…"));
+    if (R.phases.review.status === "skipped") {
+      out.append(h("div", { class: "section note" }, "Human review is off for this run: the inferred shared actions go straight to Phase 2."));
     }
     return out;
   },
 
-  "2"(data, R) {
+  "2"(R) {
+    const data = R.phases["2"].data;
+    if (!data) return null;
     const routines = (R.start?.routines || []).map((r) => r.routine_name);
     const sharedIds = new Set(sharedActions(R).map((a) => a.node_id));
     const out = h("div", {});
@@ -1050,6 +945,68 @@ const PHASE_RENDERERS = {
     return out;
   },
 };
+
+function reviewSection(R) {
+  const rv = R.review;
+  if (!rv) return null;
+  const routines = rv.routines;
+  const out = h("div", { class: "section" }, h("div", { class: "section-title" }, "Human review of the shared actions"));
+  if (!rv.submitted) {
+    out.append(h("div", { class: "review-banner", html: ICON.hand },));
+    out.lastChild.append(h("div", {},
+      h("strong", {}, rv.replay ? "Recorded review step. " : "Your turn. "),
+      rv.replay ? "In the recorded run the operator reviewed these shared actions here. Continue to replay their decision."
+        : "Each row is an action performed once that several executions rely on. Toggle which routines depend on it, or clear a row to make it an ordinary step."));
+  }
+  const resolved = rv.resolved;
+  const topo = resolved ? resolved.topology : rv.topology;
+  const editedCells = new Set();
+  if (!resolved) {
+    for (const a of rv.topology) for (const r of routines) {
+      if (rv.sel[a.node_id].has(r) !== rv.orig[a.node_id].has(r)) editedCells.add(`${a.node_id}|${r}`);
+    }
+  } else {
+    for (const c of resolved.changes || []) for (const r of routines) {
+      if (c.before.includes(r) !== c.after.includes(r)) editedCells.add(`${c.node_id}|${r}`);
+    }
+  }
+  const editable = !resolved && !rv.replay && !rv.submitted;
+  // Actions Phase 1 gave to a single routine are not shown: they are not shared
+  // actions. They are still sent back unchanged, so Phase 2 handles them as inferred.
+  const isShared = (a) => rv.orig[a.node_id].size > 1;
+  const rows = (resolved ? mergeRemoved(rv.topology, topo) : rv.topology).filter(isShared);
+  out.append(topologyMatrix(rows, routines, {
+    justify: true, editable, sel: resolved ? null : rv.sel, editedCells,
+    onToggle: (nid, r) => {
+      const set = rv.sel[nid];
+      set.has(r) ? set.delete(r) : set.add(r);
+      renderPhaseDetail();
+    },
+    onClear: (nid) => { rv.sel[nid].clear(); renderPhaseDetail(); },
+  }));
+  if (resolved) {
+    const n = (resolved.changes || []).length;
+    out.append(h("div", { class: "verdict" }, n ? `Approved with ${n} edited action(s).` : "Approved as inferred — no edits."));
+  } else if (!rv.submitted) {
+    const actions = h("div", { class: "review-actions" });
+    if (rv.replay) {
+      actions.append(h("button", { class: "btn primary", onclick: () => submitReview("accept") }, "Continue replay →"));
+    } else {
+      actions.append(
+        h("button", { class: "btn danger", onclick: () => submitReview("abort") }, "Abort run"),
+        h("button", { class: "btn ghost", disabled: !editedCells.size, onclick: () => {
+          for (const a of rv.topology) rv.sel[a.node_id] = new Set(rv.orig[a.node_id]);
+          renderPhaseDetail();
+        } }, "Reset edits"),
+        h("button", { class: "btn primary", onclick: () => submitReview("accept") },
+          editedCells.size ? "Approve edits & run Phase 2 →" : "Approve & run Phase 2 →"));
+    }
+    out.append(actions);
+  } else {
+    out.append(h("div", { class: "verdict" }, h("span", { class: "spinner", style: { display: "inline-block", verticalAlign: "-2px", marginRight: "8px" } }), "Decision sent…"));
+  }
+  return out;
+}
 
 function mergeRemoved(original, final) {
   // Keep rows the operator cleared, so the edit stays visible.
@@ -1211,12 +1168,12 @@ function renderUntangle(animate) {
   const noise = new Set(res.noise);
   const dots = [];
 
-  // Events removed by Phase 0A never became nodes: they fall into Noise too.
+  // Events Phase 0 removed as noise never became nodes: they fall into Noise too.
   const nodeRaw = new Set(R.nodes.map((n) => n.raw).filter((r) => r !== null && r !== undefined));
   const dropped = (R.phases["0A"].data?.removed || []).filter((r) => !nodeRaw.has(r));
   for (const r of dropped) {
     const ev = R.raw.events[r];
-    dots.push({ x: xOf({ raw: r }), lane: null, noise: true, shared: false, first: true, tip: eventTip(ev) + '<div class="tt-sub">Removed by Phase 0A (noise event type)</div>' });
+    dots.push({ x: xOf({ raw: r }), lane: null, noise: true, shared: false, first: true, tip: eventTip(ev) + '<div class="tt-sub">Removed by Phase 0 (noise event type)</div>' });
   }
   for (const n of R.nodes) {
     const x = xOf(n);
@@ -1343,7 +1300,7 @@ function renderNoise() {
   }
   box.append(h("div", { class: "event-list" }, res.noise.map((nid) => {
     const row = eventRow(nid);
-    row.title = unrouted.has(nid) ? "Not routed by Phase 2" : "Tagged by Phase 0A-2 (relevance)";
+    row.title = unrouted.has(nid) ? "Not routed by Phase 2" : "Tagged by Phase 0: unrelated to the declared routines";
     return row;
   })));
 }
