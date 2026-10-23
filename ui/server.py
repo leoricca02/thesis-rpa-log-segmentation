@@ -26,7 +26,7 @@ for _path in (_REPO_ROOT / "src", _UI_DIR):
 
 from dotenv import load_dotenv  # noqa: E402
 from fastapi import FastAPI, File, HTTPException, UploadFile  # noqa: E402
-from fastapi.responses import FileResponse, StreamingResponse  # noqa: E402
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
@@ -64,7 +64,7 @@ async def _revalidate_frontend(request, call_next):
     """
     response = await call_next(request)
     if request.url.path == "/" or request.url.path.startswith("/static/"):
-        response.headers["Cache-Control"] = "no-cache"
+        response.headers.setdefault("Cache-Control", "no-cache")
     return response
 
 
@@ -132,8 +132,18 @@ def _get_run(run_id: str) -> Run:
 
 # ----------------------------------------------------------------------- API
 @app.get("/")
-def index() -> FileResponse:
-    return FileResponse(_UI_DIR / "static" / "index.html")
+def index() -> HTMLResponse:
+    """Serve the page with app.js and styles.css versioned by their mtime.
+
+    Each edit changes the URL, so a browser can never pair the page with a
+    stale copy of the script or stylesheet it cached earlier.
+    """
+    static = _UI_DIR / "static"
+    html = (static / "index.html").read_text(encoding="utf-8")
+    for name in ("app.js", "styles.css"):
+        version = int((static / name).stat().st_mtime)
+        html = html.replace(f"/static/{name}\"", f"/static/{name}?v={version}\"")
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/status")
