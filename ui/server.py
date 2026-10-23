@@ -55,6 +55,19 @@ app.mount("/static", StaticFiles(directory=_UI_DIR / "static"), name="static")
 RUNS: dict[str, Run] = {}
 
 
+@app.middleware("http")
+async def _revalidate_frontend(request, call_next):
+    """Make the browser re-check the page and its static files on every load.
+
+    Without a Cache-Control header a browser may reuse a stale app.js after
+    the UI is edited. With no-cache it revalidates via ETag (a cheap 304).
+    """
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 # --------------------------------------------------------------------- models
 class Routine(BaseModel):
     routine_name: str = Field(min_length=1, max_length=80)
