@@ -107,8 +107,6 @@ function toast(msg) {
 const ICON = {
   file: '<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>',
   play: '<svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg>',
-  spark: '<svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>',
-  hand: '<svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
 };
 
 // ------------------------------------------------------------------- tooltip
@@ -773,7 +771,7 @@ function renderPhaseDetail() {
     box.append(h("div", { class: "section note" }, "Waiting for the earlier phases."));
   } else if (pid === "0" && ph.status === "running") {
     box.append(h("div", { class: "section waiting-model" },
-      h("span", { class: "dots" }, h("i"), h("i"), h("i")), h("span", {}, "Cleaning the raw log and writing the narrative…")));
+      h("span", { class: "dots" }, h("i"), h("i"), h("i")), h("span", {}, "Processing trace events…")));
   }
 
   // Phase 0 shows only its output; Phases 1 and 2 also show their model call.
@@ -821,12 +819,12 @@ function renderCall(pid, call) {
 
   const lowThinking = call.thinking?.thinkingLevel === "minimal" || call.thinking?.thinkingBudget === 0;
   const box = h("div", { class: "thinking" },
-    h("div", { class: "thinking-head", html: `${ICON.spark}<span>What the model is thinking</span>` }));
+    h("div", { class: "thinking-head" }, "Model thought summary"));
   if (call.status === "running") {
     const nEvents = (call.user_prompt.match(/^Node \d+:/gm) || []).length;
     box.append(h("div", { class: "waiting-model" },
       h("span", { class: "dots" }, h("i"), h("i"), h("i")),
-      h("span", {}, call.cached ? "Replaying a cached response…" : `${call.model} is reading ${nEvents ? nEvents + " events" : "the prompt"}… `,
+      h("span", {}, call.cached ? "Replaying a cached response…" : `Processing trace events… ${nEvents ? `${nEvents} events · ` : ""}${call.model} · `,
         h("span", { "data-wait": String(call.startedAt) }, "0.0s"))));
   } else if (call.thoughts) {
     box.append(typewriter(`${S.run.id}-${pid}-${call.seq}-thoughts`, call.thoughts, "t-body"));
@@ -936,7 +934,7 @@ const PHASE_RENDERERS = {
     out.append(section("One reasoning note per execution",
       h("div", { class: "exec-reasons" }, data.traces.map((t, i) => {
         const k = routines.indexOf(t.routine);
-        return h("div", { class: "exec-reason", style: { borderLeftColor: seriesVar(k), animationDelay: `${i * 80}ms` } },
+        return h("div", { class: "exec-reason", style: { borderLeftColor: seriesVar(k) } },
           h("b", {}, `${t.routine} · execution ${t.execution}`),
           t.reasoning || h("span", { class: "note" }, "No reasoning returned."),
           h("div", { class: "n" }, `${t.nodes.length} events · ${t.shared.filter((n) => sharedIds.has(n)).length} shared`));
@@ -952,11 +950,10 @@ function reviewSection(R) {
   const routines = rv.routines;
   const out = h("div", { class: "section" }, h("div", { class: "section-title" }, "Human review of the shared actions"));
   if (!rv.submitted) {
-    out.append(h("div", { class: "review-banner", html: ICON.hand },));
-    out.lastChild.append(h("div", {},
-      h("strong", {}, rv.replay ? "Recorded review step. " : "Your turn. "),
+    out.append(h("div", { class: "review-banner" }, h("div", {},
+      h("strong", {}, rv.replay ? "Recorded review step. " : "Action required. "),
       rv.replay ? "In the recorded run the operator reviewed these shared actions here. Continue to replay their decision."
-        : "Each row is an action performed once that several executions rely on. Toggle which routines depend on it, or clear a row to make it an ordinary step."));
+        : "Each row is an action performed once that several executions rely on. Toggle which routines depend on it, or clear a row to make it an ordinary step.")));
   }
   const resolved = rv.resolved;
   const topo = resolved ? resolved.topology : rv.topology;
@@ -1032,7 +1029,7 @@ function topologyMatrix(topology, routines, opts = {}) {
   const head = h("tr", {}, h("th", {}, "Shared action"),
     routines.map((r, i) => h("th", { class: "rcol" }, h("div", { class: "rh" }, h("span", { class: "sw", style: { background: seriesVar(i) } }), r))),
     h("th", {}, "Scope"));
-  const rows = topology.map((a, idx) => {
+  const rows = topology.map((a) => {
     const set = opts.sel ? opts.sel[a.node_id] : new Set(a.shared_with);
     const cells = routines.map((r, i) => {
       const on = set.has(r);
@@ -1050,7 +1047,7 @@ function topologyMatrix(topology, routines, opts = {}) {
     const node = { action: a.action, text: a.text, where: a.where };
     const scope = set.size === 0 ? h("span", { class: "scope" }, "not shared")
       : h("span", { class: "scope" }, `${set.size}/${routines.length}`, h("small", {}, set.size === routines.length ? " all" : ""));
-    return h("tr", { style: { animationDelay: `${idx * 50}ms` } },
+    return h("tr", {},
       h("td", { class: "act" },
         h("div", { class: "act-main" }, h("span", { class: "mono", style: { color: "var(--text-3)" } }, `#${n} `), nodeLine(node)),
         h("div", { class: "act-sub" }, a.app),
@@ -1062,7 +1059,7 @@ function topologyMatrix(topology, routines, opts = {}) {
 }
 
 function checksList(checks) {
-  return h("div", {}, checks.map((c, i) => h("div", { class: "check", style: { animationDelay: `${i * 60}ms` } },
+  return h("div", {}, checks.map((c) => h("div", { class: "check" },
     h("span", { class: `check-icon ${c.status}` }, c.status === "pass" ? "✓" : c.status === "warn" ? "!" : "✕"),
     h("div", {}, h("div", { class: "check-label" }, h("span", { class: "cid" }, c.id), c.label),
       c.detail ? h("div", { class: "check-detail" }, c.detail) : null))));
@@ -1271,7 +1268,7 @@ function renderTraces() {
   const detail = $("#traceDetail");
   detail.innerHTML = "";
   detail.append(h("div", { class: "quote", style: { borderLeftColor: seriesVar(k) } },
-    h("b", {}, `Why the model grouped these events: `), t.reasoning || "—"));
+    h("b", {}, "Model rationale: "), t.reasoning || "—"));
   const rows = t.nodes.map((nid) => {
     const n = R.nodeById[nid] || {};
     const ev = R.raw?.events[n.raw];
