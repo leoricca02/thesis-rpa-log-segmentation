@@ -34,20 +34,16 @@
       <div class="view-head">
         <h1>Start from a raw UI log</h1>
         <p class="lead">One recording session, several business routines, each executed more than once —
-          <strong>interleaved</strong>. Upload a SmartRPA log or pick one of the thesis logs.</p>
+          <strong>interleaved</strong>. Upload the input log to start.</p>
       </div>
       <div class="grid-input">
         <div class="stack">
           <label class="dropzone" id="dropzone">
             <input type="file" id="fileInput" accept=".csv" hidden>
             <svg viewBox="0 0 24 24" class="dz-icon"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-            <div class="dz-title">Drop a SmartRPA log here</div>
-            <div class="dz-sub">semicolon-delimited .csv · or click to browse</div>
+            <div class="dz-title">Drop the input log here</div>
+            <div class="dz-sub">.csv file · or click to browse</div>
           </label>
-          <div class="card">
-            <div class="card-title">Thesis logs</div>
-            <div class="list" id="sampleList"></div>
-          </div>
           <div class="card">
             <div class="card-title">Recordings <span class="hint">replay a recorded run — no network needed</span></div>
             <div class="list" id="recordingList"></div>
@@ -55,7 +51,7 @@
         </div>
         <div class="card preview" id="previewCard">
           <div class="empty-state">
-            <p>No log selected. Choose a log to inspect its events.</p>
+            <p>No log loaded. Upload the input log to inspect its events.</p>
           </div>
         </div>
       </div>
@@ -105,10 +101,6 @@
       <div class="grid-pipeline">
         <aside class="card timeline" id="timeline"></aside>
         <section class="card phase-detail" id="phaseDetail"></section>
-        <aside class="card console">
-          <div class="card-title">Pipeline console <span class="hint">the pipeline's own output</span></div>
-          <div class="console-body" id="console"></div>
-        </aside>
       </div>
     </section>
 

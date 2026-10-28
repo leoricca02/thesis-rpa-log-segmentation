@@ -23,9 +23,9 @@ recording needs no key and no network.
 
 | Screen | Content |
 | :-- | :-- |
-| **Input log** | Upload a SmartRPA CSV, or pick one of the logs under `data/`. Preview: event count, populated columns, applications, time span, and the raw interleaved sequence. |
+| **Input log** | Upload the input log (CSV), or pick a saved recording to replay. Preview: event count, populated columns, applications, time span, and the raw interleaved sequence. |
 | **Routines** | Declare routine names and execution counts — the only supervision the method needs. The only visible option is the human review of the shared actions. Everything else is fixed for every live run: relevance tagging (0A-2) on, Gemini thought summaries on, no cache reuse (every call is a fresh inference), model from `GEMINI_MODEL` (default `gemini-3.5-flash`). |
-| **Pipeline** | A timeline of three phases: 0 (cleaning and narrative), 1 (shared actions, with the human review inside it) and 2 (execution routing). Phase 0 shows only what it does and its output, the narrative Phase 1 receives; its internal steps are folded into it, also in the console. Phases 1 and 2 also show the model call (thinking level, tokens, latency, full prompt), the model's thought summary and the phase's result. The pipeline's console output streams alongside. |
+| **Pipeline** | A timeline of three phases: 0 (cleaning and narrative), 1 (shared actions, with the human review inside it) and 2 (execution routing). Phase 0 shows only what it does and its output, the narrative Phase 1 receives; its internal steps are folded into it. Phases 1 and 2 also show the model call (thinking level, tokens, latency, full prompt), the model's thought summary and the phase's result. |
 | **Human review** | The inferred shared actions as a matrix *shared action × routine*. Toggle cells to edit a subset, or turn an action into an ordinary step, then approve. Same semantics as the CLI's `--review`. |
 | **Result** | The "untangle" animation: every event leaves the interleaved line for the lane of its execution, shared actions are copied into every trace their subset allows, noise drops to its own lane. Then per-execution traces with the model's reasoning, the validation checks (P1–P3, S1–S2), the Noise sheet, the final shared actions, and downloads of the XLSX workbook and the JSON audit trail. |
 
@@ -70,7 +70,7 @@ it carries no thought summaries. For the defence, record a live run.
 ## Recording the demo video — suggested flow
 
 1. Light or dark theme (toggle in the top bar); light usually reads better on a projector.
-2. **Input** → `caso_studio_trasferte_2exec.csv`; point at the interleaved ribbon.
+2. **Input** → upload `data/case_study/caso_studio_trasferte_2exec.csv`; point at the interleaved ribbon.
 3. **Routines** → "Use the case-study routines"; leave the human review of the shared actions on.
 4. **Pipeline** → follow the timeline; click a finished phase to go back to it.
    In Phase 1 the thought summary and the reasoning appear above the shared actions.
@@ -78,8 +78,13 @@ it carries no thought summaries. For the defence, record a live run.
    The UI lists as shared only actions that two or more routines depend on. An action
    Phase 1 gives to a single routine is not shown in the review and appears in the
    result as an ordinary step; it still reaches Phase 2 exactly as inferred.
-6. **Result** → "Untangle again" replays the animation.
+6. **Result** → "Replay animation" replays the untangle animation.
 7. **Save as recording**, so the same run can be replayed during the discussion.
+
+## Display size
+
+Every measure in `static/styles.css` is scaled by 1.35 so the UI reads on a projector;
+`UI_SCALE` in `static/app.js` applies the same factor to the result animation. Change both together.
 
 ## Files
 

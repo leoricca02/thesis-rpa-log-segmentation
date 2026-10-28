@@ -33,6 +33,8 @@ const CASE_STUDY_ROUTINES = [
   { name: "Student Grant Disbursement", executions: 2 },
 ];
 const MAX_ROUTINES = 8;
+// Size factor applied to every measure in styles.css; the untangle geometry uses it too.
+const UI_SCALE = 1.35;
 
 // ---------------------------------------------------------------------- state
 // Only `review` is a visible choice; the other options are fixed for every live run.
@@ -45,7 +47,6 @@ const S = {
   view: "input",
   maxView: 0,
   status: { api_key: false, model: "" },
-  samples: [],
   recordings: [],
   log: null,          // preview of the selected log
   source: null,       // {kind: 'sample'|'upload'|'recording', id}
@@ -211,33 +212,12 @@ async function loadInputs() {
     S.options.model = S.status.model;
     $("#modelBadge").textContent = S.status.model;
   } catch (_) { /* server offline */ }
-  try { S.samples = await api("/api/samples"); } catch (_) { S.samples = []; }
   await refreshRecordings();
-  renderSampleList();
 }
 
 async function refreshRecordings() {
   try { S.recordings = await api("/api/recordings"); } catch (_) { S.recordings = []; }
   renderRecordingList();
-}
-
-function renderSampleList() {
-  const list = $("#sampleList");
-  list.innerHTML = "";
-  let group = null;
-  for (const s of S.samples) {
-    if (s.group !== group) {
-      group = s.group;
-      list.append(h("div", { class: "group-label" }, group));
-    }
-    const selected = S.source && S.source.kind === "sample" && S.source.id === s.log_id;
-    list.append(
-      h("button", { class: `list-item ${selected ? "selected" : ""}`, onclick: () => selectSample(s) },
-        h("span", { class: "li-icon", html: ICON.file }),
-        h("span", { class: "li-main" }, h("div", { class: "li-name" }, s.name)))
-    );
-  }
-  if (!S.samples.length) list.append(h("div", { class: "muted-empty" }, "No logs found under data/."));
 }
 
 function renderRecordingList() {
@@ -257,13 +237,6 @@ function renderRecordingList() {
   if (!S.recordings.length) {
     list.append(h("div", { class: "muted-empty" }, "No recordings yet. Finish a live run, then “Save as recording”."));
   }
-}
-
-async function selectSample(sample) {
-  try {
-    const preview = await api(`/api/logs/preview?log_id=${encodeURIComponent(sample.log_id)}`);
-    setLog(preview, { kind: "sample", id: sample.log_id });
-  } catch (err) { toast(err.message); }
 }
 
 async function selectRecording(rec) {
@@ -298,7 +271,6 @@ function setLog(preview, source) {
     }
   }
   S.maxView = 0;
-  renderSampleList();
   renderRecordingList();
   renderPreview();
 }
@@ -503,7 +475,6 @@ function beginRun(id, replay) {
   S.follow = true;
   S.activeTrace = 0;
   for (const k of Object.keys(TW.shown)) delete TW.shown[k];
-  $("#console").innerHTML = "";
   const badge = $("#modeBadge");
   badge.hidden = false;
   badge.className = `badge ${replay ? "replay" : "live"}`;
@@ -548,15 +519,6 @@ function onEvent(e) {
       detailDirty = true;
       break;
     }
-    case "log":
-      // Phase 0's own output names its internal steps; the console shows one header for it.
-      if (PHASE_OF_PART[e.phase] === "0") {
-        if (!R.phase0Logged) appendConsole("--- Phase 0: cleaning the raw log and building the narrative ---");
-        R.phase0Logged = true;
-      } else {
-        appendConsole(e.line);
-      }
-      break;
     case "llm_call":
       (P[e.phase]?.calls || []).push({ ...e, status: "running", startedAt: Date.now() });
       R.calls += 1;
@@ -630,19 +592,6 @@ function onEvent(e) {
     renderTimeline();
     if (detailDirty) renderPhaseDetail();
   }
-}
-
-function appendConsole(line) {
-  const box = $("#console");
-  let cls = "ln";
-  if (/^---/.test(line)) cls += " hdr";
-  else if (/CRITICAL|\[!\] ABORT/.test(line)) cls += " err";
-  else if (/\[!\]|WARNING/.test(line)) cls += " warn";
-  else if (/SUCCESS/.test(line)) cls += " ok";
-  else if (/CACHE|TOKENS/.test(line)) cls += " cache";
-  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-  box.append(h("div", { class: cls }, line));
-  if (nearBottom) box.scrollTop = box.scrollHeight;
 }
 
 function renderPipeline() {
@@ -894,7 +843,7 @@ const PHASE_RENDERERS = {
         h("div", { class: "serial" }, kv, h("div", { class: "arrow" }, "→"),
           h("div", { class: "sentence", html: sentenceHtml(data.example.narrative) }))));
     }
-    const list = h("div", { class: "table-wrap", style: { maxHeight: "320px" } },
+    const list = h("div", { class: "table-wrap", style: { maxHeight: "430px" } },
       h("table", {}, h("tbody", {}, data.nodes.map((n) =>
         h("tr", {}, h("td", { class: "num" }, n.id), h("td", { class: "mono", html: sentenceHtml(n.narrative) }))))));
     out.append(section(`The narrative Phase 1 receives · ${data.nodes.length} sentences`, list));
@@ -1133,25 +1082,26 @@ function renderUntangle(animate) {
   clearTimeout(untangleTimer);
   const routines = (R.start.routines || []).map((r) => r.routine_name);
   const W = box.clientWidth || 1000;
-  const G = Math.min(260, Math.max(170, W * 0.22));
-  const x0 = G + 12, x1 = W - 12;
+  const U = UI_SCALE;
+  const G = Math.min(260 * U, Math.max(170 * U, W * 0.22));
+  const x0 = G + 12 * U, x1 = W - 12 * U;
   const rawCount = R.raw?.rows || R.nodes.length;
   const xOf = (node) => {
     const pos = node.raw ?? node.id;
     return x0 + (rawCount > 1 ? (pos / (rawCount - 1)) * (x1 - x0) : 0);
   };
-  const ROW = 30, TOP = 14;
-  const laneY = (i) => TOP + 46 + i * ROW;
-  const noiseY = laneY(res.traces.length) + 10;
-  box.style.height = `${noiseY + 22}px`;
+  const ROW = 30 * U, TOP = 14 * U, HALF = 11 * U;  // HALF: half a lane's CSS height
+  const laneY = (i) => TOP + 46 * U + i * ROW;
+  const noiseY = laneY(res.traces.length) + 10 * U;
+  box.style.height = `${noiseY + 2 * HALF}px`;
 
-  const label = (y, swatch, text, sub) => h("div", { class: "lane-label", style: { top: `${y - 11}px`, width: `${G}px` } },
+  const label = (y, swatch, text, sub) => h("div", { class: "lane-label", style: { top: `${y - HALF}px`, width: `${G}px` } },
     swatch ? h("span", { class: "sw", style: { background: swatch } }) : null,
     h("span", { style: { overflow: "hidden", textOverflow: "ellipsis" } }, text, sub ? h("span", { class: "ex" }, ` · ${sub}`) : null));
-  const laneBg = (y, striped) => h("div", { class: `lane-bg ${striped ? "striped" : ""}`, style: { top: `${y - 11}px`, left: `${G}px` } });
+  const laneBg = (y, striped) => h("div", { class: `lane-bg ${striped ? "striped" : ""}`, style: { top: `${y - HALF}px`, left: `${G}px` } });
 
   box.append(laneBg(TOP, false), label(TOP, null, "Interleaved log"));
-  box.append(h("div", { class: "divider", style: { top: `${TOP + 23}px`, left: `${G}px` } }));
+  box.append(h("div", { class: "divider", style: { top: `${TOP + 23 * U}px`, left: `${G}px` } }));
   res.traces.forEach((t, i) => {
     const k = routines.indexOf(t.routine);
     box.append(laneBg(laneY(i), t.execution > 1), label(laneY(i), seriesVar(k), t.routine, `exec ${t.execution}`));
@@ -1280,7 +1230,7 @@ function renderTraces() {
       h("td", {}, n.text || "", n.where ? h("span", { style: { color: "var(--text-3)" } }, ` · ${n.where}`) : null),
       h("td", {}, subsetSize[nid] ? h("span", { class: "shared-tag" }, `shared · ${subsetSize[nid]}/${routines.length}`) : null));
   });
-  detail.append(h("div", { class: "table-wrap", style: { maxHeight: "460px" } },
+  detail.append(h("div", { class: "table-wrap", style: { maxHeight: "620px" } },
     h("table", {}, h("thead", {}, h("tr", {}, h("th", { class: "num" }, "#"), h("th", {}, "Time"), h("th", {}, "App"), h("th", {}, "Event"), h("th", {}, "Content"), h("th", {}, ""))),
       h("tbody", {}, rows))));
 }
