@@ -1253,5 +1253,8 @@ function renderNoise() {
 }
 
 // ---------------------------------------------------------------- bootstrap
+// Recordings stay hidden on screen; open the page with ?recordings to show them
+// (e.g. to replay a saved run if the network fails during the defence).
+$("#recordingsCard").hidden = !new URLSearchParams(location.search).has("recordings");
 renderStepper();
 loadInputs();

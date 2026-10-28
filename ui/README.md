@@ -23,7 +23,7 @@ recording needs no key and no network.
 
 | Screen | Content |
 | :-- | :-- |
-| **Input log** | Upload the input log (CSV), or pick a saved recording to replay. Preview: event count, populated columns, applications, time span, and the raw interleaved sequence. |
+| **Input log** | Upload the input log (CSV). Saved recordings are hidden; open the page as `http://127.0.0.1:8000/?recordings` to list them and replay one. Preview: event count, populated columns, applications, time span, and the raw interleaved sequence. |
 | **Routines** | Declare routine names and execution counts — the only supervision the method needs. The only visible option is the human review of the shared actions. Everything else is fixed for every live run: relevance tagging (0A-2) on, Gemini thought summaries on, no cache reuse (every call is a fresh inference), model from `GEMINI_MODEL` (default `gemini-3.5-flash`). |
 | **Pipeline** | A timeline of three phases: 0 (cleaning and narrative), 1 (shared actions, with the human review inside it) and 2 (execution routing). Phase 0 shows only what it does and its output, the narrative Phase 1 receives; its internal steps are folded into it. Phases 1 and 2 also show the model call (thinking level, tokens, latency, full prompt), the model's thought summary and the phase's result. |
 | **Human review** | The inferred shared actions as a matrix *shared action × routine*. Toggle cells to edit a subset, or turn an action into an ordinary step, then approve. Same semantics as the CLI's `--review`. |
